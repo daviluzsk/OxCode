@@ -25,6 +25,8 @@ export interface CommandHost {
   pickSession(): Promise<string | null>;
   /** Show an interactive model picker; returns a model id or null. */
   pickModel(current: string): Promise<string | null>;
+  /** Show a generic single-choice picker; returns the chosen id or null (cancelled). */
+  pickChoice(spec: ChoiceSpec): Promise<string | null>;
   /** Replace the active session (used by /resume and --continue). */
   loadSession(session: Session): void;
   /** Fire a side question (/btw) without touching the main conversation. */
@@ -42,6 +44,19 @@ export interface CommandDeps {
   mcp: McpManager | null;
   profile: RepoProfile | null;
   skills: Skill[];
+}
+
+/** One row in the generic interactive picker (see CommandHost.pickChoice). */
+export interface ChoiceOption {
+  id: string;
+  label?: string;
+  note?: string;
+}
+
+export interface ChoiceSpec {
+  title: string;
+  options: ChoiceOption[];
+  current?: string;
 }
 
 export type CommandOutcome =
@@ -64,14 +79,14 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'context', description: 'Show approximate context usage' },
   { name: 'cost', description: 'Show token usage for this session' },
   { name: 'model', description: 'Show or change the model (/model <name>)' },
-  { name: 'effort', description: 'Show or set reasoning effort (low|medium|high)' },
+  { name: 'effort', description: 'Pick reasoning effort (/effort with no arg opens a menu)' },
   { name: 'system', description: 'Set a custom instruction the agent always follows (/system <text>|off|--save)' },
   { name: 'skills', description: 'List installed skills (.ox/skills)' },
-  { name: 'pentest', description: 'Toggle pentest mode (authorized security testing)' },
+  { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
   { name: 'btw', description: 'Side question without interrupting the current run' },
   { name: 'status', description: 'Show model, repository, permissions and session info' },
   { name: 'config', description: 'Show the resolved configuration' },
-  { name: 'permissions', description: 'Show or set the permission mode' },
+  { name: 'permissions', description: 'Pick the permission mode (/permissions opens a menu)' },
   { name: 'diff', description: 'Show the current Git diff' },
   { name: 'git', description: 'Show Git status' },
   { name: 'init', description: 'Analyze the repository and create OX.md' },
@@ -169,17 +184,33 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
     }
 
     case 'effort': {
-      if (!arg) {
-        host.print(`Reasoning effort: ${config.reasoningEffort ?? '(provider default)'}\nSet with: /effort low|medium|high  ·  /effort off to clear`);
-      } else if (arg === 'off' || arg === 'none' || arg === 'default') {
-        config.reasoningEffort = undefined;
-        host.print('Reasoning effort cleared — the provider default will be used.');
-      } else if (arg === 'low' || arg === 'medium' || arg === 'high') {
-        config.reasoningEffort = arg;
-        host.print(`Reasoning effort set to: ${arg} (applies from the next request).`);
-      } else {
-        host.print(`Unknown effort "${arg}". Expected low, medium or high.`);
+      const applyEffort = (value: string): void => {
+        if (value === 'off' || value === 'none' || value === 'default') {
+          config.reasoningEffort = undefined;
+          host.print('Reasoning effort cleared — the provider default will be used.');
+        } else if (value === 'low' || value === 'medium' || value === 'high') {
+          config.reasoningEffort = value;
+          host.print(`Reasoning effort set to: ${value} (applies from the next request).`);
+        } else {
+          host.print(`Unknown effort "${value}". Expected low, medium or high.`);
+        }
+      };
+      if (arg) {
+        applyEffort(arg);
+        return { kind: 'handled' };
       }
+      const picked = await host.pickChoice({
+        title: 'Reasoning effort',
+        current: config.reasoningEffort ?? 'off',
+        options: [
+          { id: 'off', label: 'off', note: 'provider default' },
+          { id: 'low', label: 'low', note: 'fastest, cheapest' },
+          { id: 'medium', label: 'medium', note: 'balanced' },
+          { id: 'high', label: 'high', note: 'most thorough, slowest' },
+        ],
+      });
+      if (picked) applyEffort(picked);
+      else host.print(`Reasoning effort: ${config.reasoningEffort ?? '(provider default)'} (unchanged)`);
       return { kind: 'handled' };
     }
 
@@ -231,12 +262,36 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
     }
 
     case 'pentest': {
-      config.pentest = !config.pentest;
-      host.print(
-        config.pentest
-          ? 'Pentest mode ON — security-testing methodology is now in the system prompt.\n⚠ Use only on targets you are explicitly authorized to test. The agent will ask for scope/authorization if it is not clear.'
-          : 'Pentest mode OFF.',
-      );
+      const announce = (): void =>
+        host.print(
+          config.pentest
+            ? 'Pentest mode ON — security-testing methodology is now in the system prompt.\n⚠ Use only on targets you are explicitly authorized to test. The agent will ask for scope/authorization if it is not clear.'
+            : 'Pentest mode OFF.',
+        );
+      const lc = arg.toLowerCase();
+      if (lc === 'on' || lc === 'off') {
+        config.pentest = lc === 'on';
+        announce();
+      } else if (arg) {
+        // any other explicit arg keeps the legacy toggle behavior
+        config.pentest = !config.pentest;
+        announce();
+      } else {
+        const picked = await host.pickChoice({
+          title: 'Pentest mode',
+          current: config.pentest ? 'on' : 'off',
+          options: [
+            { id: 'off', label: 'off', note: 'normal coding assistant' },
+            { id: 'on', label: 'on', note: 'authorized security-testing methodology ⚠' },
+          ],
+        });
+        if (picked === 'on' || picked === 'off') {
+          config.pentest = picked === 'on';
+          announce();
+        } else {
+          host.print(`Pentest mode: ${config.pentest ? 'on' : 'off'} (unchanged)`);
+        }
+      }
       return { kind: 'handled' };
     }
 
@@ -283,23 +338,33 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
     }
 
     case 'permissions': {
-      if (!arg) {
-        host.print(
-          `Permission mode: ${permissions.getMode()}\n` +
-            'Modes:\n' +
-            '  default                     reads run free; edits, clicks and risky commands ask\n' +
-            '  askAll                      EVERY action asks for approval first\n' +
-            '  acceptEdits                 file edits/clicks auto-approved; destructive shell still asks\n' +
-            '  plan                        inspect and plan only — no mutations, no command execution\n' +
-            '  dangerouslySkipPermissions  everything runs without asking (dangerous)\n' +
-            'Change with: /permissions <mode>',
-        );
-      } else if (arg === 'default' || arg === 'askAll' || arg === 'acceptEdits' || arg === 'plan' || arg === 'dangerouslySkipPermissions') {
-        permissions.setMode(arg);
-        host.print(`Permission mode set to: ${arg}${arg === 'dangerouslySkipPermissions' ? ' — every tool now runs without asking. Be careful.' : ''}${arg === 'askAll' ? ' — every action will ask first. Use "Yes, and allow similar this session" to reduce friction.' : ''}`);
-      } else {
-        host.print(`Unknown mode "${arg}". Expected: default | askAll | acceptEdits | plan | dangerouslySkipPermissions`);
+      const isMode = (v: string): v is 'default' | 'askAll' | 'acceptEdits' | 'plan' | 'dangerouslySkipPermissions' =>
+        v === 'default' || v === 'askAll' || v === 'acceptEdits' || v === 'plan' || v === 'dangerouslySkipPermissions';
+      const applyMode = (mode: string): void => {
+        if (!isMode(mode)) {
+          host.print(`Unknown mode "${mode}". Expected: default | askAll | acceptEdits | plan | dangerouslySkipPermissions`);
+          return;
+        }
+        permissions.setMode(mode);
+        host.print(`Permission mode set to: ${mode}${mode === 'dangerouslySkipPermissions' ? ' — every tool now runs without asking. Be careful.' : ''}${mode === 'askAll' ? ' — every action will ask first. Use "Yes, and allow similar this session" to reduce friction.' : ''}`);
+      };
+      if (arg) {
+        applyMode(arg);
+        return { kind: 'handled' };
       }
+      const picked = await host.pickChoice({
+        title: 'Permission mode',
+        current: permissions.getMode(),
+        options: [
+          { id: 'default', label: 'default', note: 'reads free; edits/clicks/risky commands ask' },
+          { id: 'askAll', label: 'askAll', note: 'every action asks first' },
+          { id: 'acceptEdits', label: 'acceptEdits', note: 'edits/clicks auto; destructive shell asks' },
+          { id: 'plan', label: 'plan', note: 'inspect & plan only — no mutations' },
+          { id: 'dangerouslySkipPermissions', label: 'dangerouslySkipPermissions', note: 'everything runs without asking ⚠' },
+        ],
+      });
+      if (picked) applyMode(picked);
+      else host.print(`Permission mode: ${permissions.getMode()} (unchanged)`);
       return { kind: 'handled' };
     }
 

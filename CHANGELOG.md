@@ -3,6 +3,15 @@
 All notable changes to OxCode are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Interactive pickers for `/effort`, `/permissions`, and `/pentest`** — running
+  them with no argument now opens an arrow-key menu (like `/model`) instead of
+  requiring you to type the value. Typing the value still works
+  (`/effort high`, `/permissions plan`). Powered by a new reusable `OptionPicker`
+  component and a generic `pickChoice` host method.
+
 ## [0.2.0] — 2026-08-26
 
 ### Added

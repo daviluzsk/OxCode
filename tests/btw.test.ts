@@ -24,6 +24,7 @@ function makeDeps(host: Partial<CommandHost> & Pick<CommandHost, 'btw'>): { deps
       setModel: () => {},
       pickSession: async () => null,
       pickModel: async () => null,
+      pickChoice: async () => null,
       loadSession: () => {},
       ...host,
     },

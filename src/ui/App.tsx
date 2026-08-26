@@ -3,7 +3,7 @@ import { Box, Static, Text, useApp } from 'ink';
 import type { ContentPart } from '../api/index.js';
 import type { AgentHooks } from '../agent/loop.js';
 import type { TodoItem } from '../agent/todo.js';
-import { BUILTIN_COMMANDS, handleSlashCommand, type CommandHost } from '../commands/slash.js';
+import { BUILTIN_COMMANDS, handleSlashCommand, type CommandHost, type ChoiceSpec } from '../commands/slash.js';
 import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
@@ -17,6 +17,7 @@ import { ToolView } from './components/ToolView.js';
 import { ApprovalPrompt } from './components/ApprovalPrompt.js';
 import { InputBox } from './components/InputBox.js';
 import { ModelPicker } from './components/ModelPicker.js';
+import { OptionPicker } from './components/OptionPicker.js';
 import { SessionPicker } from './components/SessionPicker.js';
 import { TodoPanel } from './components/TodoPanel.js';
 import { displayPath } from '../utils/paths.js';
@@ -40,6 +41,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   const [approval, setApproval] = useState<PendingApproval | null>(null);
   const [showResume, setShowResume] = useState(startWithResumePicker);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [choice, setChoice] = useState<ChoiceSpec | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>(() => loadInputHistory(runtime.config.cwd));
   const [model, setModel] = useState(runtime.config.model);
   const [spinnerFrame, setSpinnerFrame] = useState(0);
@@ -157,6 +159,11 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
           modelResolveRef.current = resolve;
           setShowModelPicker(true);
         }),
+      pickChoice: (spec) =>
+        new Promise<string | null>((resolve) => {
+          choiceResolveRef.current = resolve;
+          setChoice(spec);
+        }),
       loadSession: (s) => {
         runtime.replaceSession(s);
         changedRef.current = { files: new Set(), added: 0, removed: 0 };
@@ -199,6 +206,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
 
   const resumeResolveRef = useRef<((id: string | null) => void) | null>(null);
   const modelResolveRef = useRef<((id: string | null) => void) | null>(null);
+  const choiceResolveRef = useRef<((id: string | null) => void) | null>(null);
 
   const runAgent = useCallback(
     async (input: string) => {
@@ -382,6 +390,16 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
                 pushInfo(`Resumed session ${session.data.id} (${session.messages.length} messages).`);
               }
             }
+          }}
+        />
+      ) : choice ? (
+        <OptionPicker
+          spec={choice}
+          onPick={(id) => {
+            setChoice(null);
+            const resolve = choiceResolveRef.current;
+            choiceResolveRef.current = null;
+            resolve?.(id);
           }}
         />
       ) : showModelPicker ? (
