@@ -20,6 +20,8 @@ import { ModelPicker } from './components/ModelPicker.js';
 import { SessionPicker } from './components/SessionPicker.js';
 import { TodoPanel } from './components/TodoPanel.js';
 import { displayPath } from '../utils/paths.js';
+import { estimateMessagesTokens } from '../agent/loop.js';
+import { formatCount, formatDuration } from '../utils/format.js';
 
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -42,8 +44,10 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   const [model, setModel] = useState(runtime.config.model);
   const [spinnerFrame, setSpinnerFrame] = useState(0);
   const [exitHint, setExitHint] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
   const idRef = useRef(0);
+  const runStartRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
   const changedRef = useRef<{ files: Set<string>; added: number; removed: number }>({ files: new Set(), added: 0, removed: 0 });
   /** Live UI state for the /btw side channel (avoids stale closures). */
@@ -64,10 +68,13 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   // todo updates
   useEffect(() => runtime.todoStore.onChange(setTodos), [runtime]);
 
-  // spinner
+  // spinner + elapsed-time ticker (shared 90ms interval)
   useEffect(() => {
     if (!busy) return;
-    const t = setInterval(() => setSpinnerFrame((f) => (f + 1) % SPINNER.length), 90);
+    const t = setInterval(() => {
+      setSpinnerFrame((f) => (f + 1) % SPINNER.length);
+      setElapsed(Date.now() - runStartRef.current);
+    }, 90);
     return () => clearInterval(t);
   }, [busy]);
 
@@ -200,6 +207,8 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       const content: string | ContentPart[] = parts.length > 0 ? [...parts, { type: 'text', text: input }] : input;
 
       setBusy(true);
+      runStartRef.current = Date.now();
+      setElapsed(0);
       changedRef.current = { files: new Set(), added: 0, removed: 0 };
       const abort = new AbortController();
       runAbortRef.current = abort;
@@ -215,6 +224,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
             files: changed.files.size,
             added: changed.added,
             removed: changed.removed,
+            durationMs: Date.now() - runStartRef.current,
           });
         }
         if (result.status === 'max-turns') {
@@ -344,7 +354,14 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       {busy ? (
         <Box marginLeft={1} marginTop={activeTools.length === 0 && !streaming ? 1 : 0}>
           <Text color={colors.accent}>
-            {SPINNER[spinnerFrame]} {streaming ? '' : 'Thinking…'} <Text dimColor>(Ctrl+C to interrupt)</Text>
+            {SPINNER[spinnerFrame]} {streaming ? '' : 'Thinking… '}
+            <Text dimColor>
+              {formatDuration(elapsed)}
+              {runtime.session.data.usage.outputTokens > 0
+                ? ` · ${symbols.arrow}${formatCount(runtime.session.data.usage.outputTokens)} tok`
+                : ''}
+              {' · Ctrl+C to interrupt'}
+            </Text>
           </Text>
         </Box>
       ) : null}
@@ -395,6 +412,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
           model={runtime.config.reasoningEffort ? `${model} (${runtime.config.reasoningEffort})` : model}
           mode={runtime.config.pentest ? `${runtime.permissions.getMode()}·pentest` : runtime.permissions.getMode()}
           statusRight={`${runtime.session.data.usage.inputTokens.toLocaleString()} in / ${runtime.session.data.usage.outputTokens.toLocaleString()} out`}
+          contextPct={Math.min(100, Math.round((estimateMessagesTokens(runtime.session.messages) / runtime.config.compactThreshold) * 100))}
           completions={completions}
           placeholder={busy ? 'Working…  /btw <question> to chat · Ctrl+C to interrupt' : undefined}
         />

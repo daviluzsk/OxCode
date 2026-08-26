@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { colors, symbols } from '../theme.js';
 import { ToolView, type ToolEntry } from './ToolView.js';
+import { formatDuration } from '../../utils/format.js';
 
 export type HistoryEntry =
   | { id: string; kind: 'user'; text: string }
@@ -9,7 +10,7 @@ export type HistoryEntry =
   | { id: string; kind: 'tool'; tool: ToolEntry }
   | { id: string; kind: 'info'; text: string }
   | { id: string; kind: 'error'; text: string }
-  | { id: string; kind: 'summary'; files: number; added: number; removed: number };
+  | { id: string; kind: 'summary'; files: number; added: number; removed: number; durationMs?: number };
 
 export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Element | null {
   switch (entry.kind) {
@@ -60,6 +61,7 @@ export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Eleme
             {entry.files} file{entry.files === 1 ? '' : 's'} changed{' '}
             <Text color={colors.add}>+{entry.added}</Text>{' '}
             <Text color={colors.del}>-{entry.removed}</Text>
+            {entry.durationMs ? ` ${symbols.bullet} ${formatDuration(entry.durationMs)}` : ''}
           </Text>
         </Box>
       );

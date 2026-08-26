@@ -52,7 +52,7 @@ function messageText(m: ChatMessage): string {
   return '';
 }
 
-function estimateMessagesTokens(messages: ChatMessage[]): number {
+export function estimateMessagesTokens(messages: ChatMessage[]): number {
   let total = 0;
   for (const m of messages) {
     total += estimateTokens(messageText(m));

@@ -1,6 +1,6 @@
 {
   "name": "oxcode",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OxCode — an autonomous terminal coding agent powered by Ox Alpha",
   "license": "MIT",
   "type": "module",
@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "skills"
   ],

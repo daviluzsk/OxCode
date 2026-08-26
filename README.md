@@ -38,6 +38,10 @@ OxCode is an autonomous terminal coding agent powered by **Ox Alpha** (`stealth/
   1 file changed +4 -2
 ```
 
+While it works, the status line shows live progress — elapsed time and output
+tokens as they stream — and the prompt footer tracks how full the context window
+is (`42% ctx`), so you can see compaction coming before it happens.
+
 ## Requirements
 
 - **Node.js 22 or newer**

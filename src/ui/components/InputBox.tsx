@@ -16,6 +16,7 @@ export interface InputBoxProps {
   model: string;
   mode: string;
   statusRight?: string;
+  contextPct?: number;
   completions: Completion[];
   placeholder?: string;
 }
@@ -36,6 +37,7 @@ export function InputBox({
   model,
   mode,
   statusRight,
+  contextPct,
   completions,
   placeholder,
 }: InputBoxProps): React.JSX.Element {
@@ -255,6 +257,14 @@ export function InputBox({
           <Text dimColor>
             {model} · {mode}
           </Text>
+          {typeof contextPct === 'number' ? (
+            <Text>
+              <Text dimColor> · </Text>
+              <Text color={contextPct >= 85 ? colors.error : contextPct >= 60 ? colors.warning : colors.dim}>
+                {contextPct}% ctx
+              </Text>
+            </Text>
+          ) : null}
         </Box>
       </Box>
 
