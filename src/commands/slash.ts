@@ -1,0 +1,434 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { execa } from 'execa';
+import type { Agent } from '../agent/loop.js';
+import type { ResolvedConfig } from '../config/types.js';
+import type { RepoProfile } from '../context/repo.js';
+import type { McpManager } from '../mcp/manager.js';
+import type { PermissionManager } from '../permissions/manager.js';
+import type { Session } from '../sessions/store.js';
+import { Session as SessionClass, type SessionStore } from '../sessions/store.js';
+import type { Skill } from '../skills.js';
+import { isGitRepo } from '../tools/git.js';
+import type { ToolRegistry } from '../tools/registry.js';
+import { maskKey } from '../utils/redact.js';
+import { estimateTokens } from '../utils/truncate.js';
+import { expandCustomCommand, loadCustomCommands } from './custom.js';
+
+/** Side effects the host (UI or headless) must provide. */
+export interface CommandHost {
+  print(text: string): void;
+  clear(): void;
+  requestExit(): void;
+  setModel(model: string): void;
+  /** Show an interactive session picker; returns a session id or null. */
+  pickSession(): Promise<string | null>;
+  /** Show an interactive model picker; returns a model id or null. */
+  pickModel(current: string): Promise<string | null>;
+  /** Replace the active session (used by /resume and --continue). */
+  loadSession(session: Session): void;
+  /** Fire a side question (/btw) without touching the main conversation. */
+  btw(text: string): void;
+}
+
+export interface CommandDeps {
+  host: CommandHost;
+  session: () => Session;
+  agent: () => Agent;
+  config: ResolvedConfig;
+  permissions: PermissionManager;
+  sessionStore: SessionStore;
+  registry: ToolRegistry;
+  mcp: McpManager | null;
+  profile: RepoProfile | null;
+  skills: Skill[];
+}
+
+export type CommandOutcome =
+  | { kind: 'handled' }
+  | { kind: 'prompt'; text: string }
+  | { kind: 'unknown'; name: string };
+
+/** Curated models offered by the interactive /model picker. */
+export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
+  { id: 'stealth/ox-alpha', note: 'Ox Alpha (default)' },
+  { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free tier' },
+  { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — free tier' },
+  { id: 'openrouter/auto', note: 'OpenRouter auto-router' },
+];
+
+export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
+  { name: 'help', description: 'Show available commands' },
+  { name: 'clear', description: 'Start a fresh conversation (repository files are untouched)' },
+  { name: 'compact', description: 'Compact conversation history into a state summary' },
+  { name: 'context', description: 'Show approximate context usage' },
+  { name: 'cost', description: 'Show token usage for this session' },
+  { name: 'model', description: 'Show or change the model (/model <name>)' },
+  { name: 'effort', description: 'Show or set reasoning effort (low|medium|high)' },
+  { name: 'system', description: 'Set a custom instruction the agent always follows (/system <text>|off|--save)' },
+  { name: 'skills', description: 'List installed skills (.ox/skills)' },
+  { name: 'pentest', description: 'Toggle pentest mode (authorized security testing)' },
+  { name: 'btw', description: 'Side question without interrupting the current run' },
+  { name: 'status', description: 'Show model, repository, permissions and session info' },
+  { name: 'config', description: 'Show the resolved configuration' },
+  { name: 'permissions', description: 'Show or set the permission mode' },
+  { name: 'diff', description: 'Show the current Git diff' },
+  { name: 'git', description: 'Show Git status' },
+  { name: 'init', description: 'Analyze the repository and create OX.md' },
+  { name: 'resume', description: 'Resume a previous session' },
+  { name: 'doctor', description: 'Diagnose environment, API config and tools' },
+  { name: 'mcp', description: 'Show MCP server status' },
+  { name: 'exit', description: 'Exit OxCode' },
+];
+
+export async function handleSlashCommand(input: string, deps: CommandDeps): Promise<CommandOutcome> {
+  const space = input.indexOf(' ');
+  const name = (space === -1 ? input.slice(1) : input.slice(1, space)).toLowerCase();
+  const arg = space === -1 ? '' : input.slice(space + 1).trim();
+  const { host, config, permissions, sessionStore, registry } = deps;
+
+  switch (name) {
+    case 'help': {
+      const custom = loadCustomCommands(config.cwd);
+      const lines = BUILTIN_COMMANDS.map((c) => `  /${c.name.padEnd(14)} ${c.description}`);
+      const customLines = [...custom.values()].map((c) => `  /${c.name.padEnd(14)} ${c.description} (custom)`);
+      host.print(`Available commands:\n${lines.join('\n')}${customLines.length ? `\n\nCustom commands (.ox/commands/):\n${customLines.join('\n')}` : ''}`);
+      return { kind: 'handled' };
+    }
+
+    case 'exit':
+    case 'quit':
+      host.requestExit();
+      return { kind: 'handled' };
+
+    case 'clear': {
+      host.loadSession(new SessionClass(config.cwd, config.model));
+      host.clear();
+      host.print('Started a fresh conversation.');
+      return { kind: 'handled' };
+    }
+
+    case 'compact': {
+      host.print('Compacting conversation…');
+      const did = await deps.agent().compact();
+      host.print(did ? 'Conversation compacted into a state summary.' : 'Conversation is still short — nothing to compact.');
+      return { kind: 'handled' };
+    }
+
+    case 'context': {
+      const msgs = deps.session().messages;
+      let total = 0;
+      const files = new Set<string>();
+      for (const m of msgs) {
+        const text = typeof m.content === 'string' ? m.content : '';
+        total += estimateTokens(text);
+        if (m.role === 'tool') {
+          const match = text.match(/<file path="([^"]+)"/);
+          if (match?.[1]) files.add(match[1]);
+        }
+      }
+      host.print(
+        [
+          `Messages: ${msgs.length}`,
+          `Estimated context: ~${total.toLocaleString()} tokens (compacts at ${config.compactThreshold.toLocaleString()})`,
+          `Compactions so far: ${deps.session().data.compactions}`,
+          files.size ? `Files loaded in context:\n${[...files].map((f) => `  ${f}`).join('\n')}` : 'No file contents loaded yet.',
+        ].join('\n'),
+      );
+      return { kind: 'handled' };
+    }
+
+    case 'cost': {
+      const u = deps.session().data.usage;
+      host.print(
+        [
+          `Session token usage:`,
+          `  Requests:      ${u.requests}`,
+          `  Input tokens:  ${u.inputTokens.toLocaleString()}`,
+          `  Output tokens: ${u.outputTokens.toLocaleString()}`,
+          `  Cost: pricing for "${config.model}" is not configured — token counts only.`,
+        ].join('\n'),
+      );
+      return { kind: 'handled' };
+    }
+
+    case 'model': {
+      if (arg) {
+        host.setModel(arg);
+        host.print(`Model changed to: ${arg}`);
+        return { kind: 'handled' };
+      }
+      const picked = await host.pickModel(config.model);
+      if (picked) {
+        host.setModel(picked);
+        host.print(`Model changed to: ${picked}`);
+      } else {
+        host.print(`Current model: ${config.model} (unchanged)`);
+      }
+      return { kind: 'handled' };
+    }
+
+    case 'effort': {
+      if (!arg) {
+        host.print(`Reasoning effort: ${config.reasoningEffort ?? '(provider default)'}\nSet with: /effort low|medium|high  ·  /effort off to clear`);
+      } else if (arg === 'off' || arg === 'none' || arg === 'default') {
+        config.reasoningEffort = undefined;
+        host.print('Reasoning effort cleared — the provider default will be used.');
+      } else if (arg === 'low' || arg === 'medium' || arg === 'high') {
+        config.reasoningEffort = arg;
+        host.print(`Reasoning effort set to: ${arg} (applies from the next request).`);
+      } else {
+        host.print(`Unknown effort "${arg}". Expected low, medium or high.`);
+      }
+      return { kind: 'handled' };
+    }
+
+    case 'system': {
+      if (!arg) {
+        host.print(
+          config.appendSystemPrompt
+            ? `Custom system instructions (active):\n${config.appendSystemPrompt}\n\nClear with: /system off`
+            : 'No custom system instructions set.\nUsage: /system <text> — session only · /system --save <text> — persist in .ox/settings.json · /system off — clear',
+        );
+        return { kind: 'handled' };
+      }
+      if (arg === 'off') {
+        config.appendSystemPrompt = undefined;
+        host.print('Custom system instructions cleared (applies from the next message).');
+        return { kind: 'handled' };
+      }
+      const save = arg.startsWith('--save');
+      const text = (save ? arg.slice('--save'.length) : arg).trim();
+      if (!text) {
+        host.print('Usage: /system <text> · /system --save <text> · /system off');
+        return { kind: 'handled' };
+      }
+      config.appendSystemPrompt = text;
+      if (save) {
+        try {
+          const file = saveProjectSetting(config.cwd, 'appendSystemPrompt', text);
+          host.print(`Custom instructions saved to ${file} and active from the next message.`);
+        } catch (e) {
+          host.print(`Active for this session, but saving failed: ${(e as Error).message}`);
+        }
+      } else {
+        host.print('Custom instructions active from the next message (this session only — use /system --save to persist).');
+      }
+      return { kind: 'handled' };
+    }
+
+    case 'skills': {
+      if (deps.skills.length === 0) {
+        host.print(
+          'No skills installed.\nCreate one at .ox/skills/<name>/SKILL.md (project) or ~/.ox/skills/<name>/SKILL.md (user), ' +
+            'with optional frontmatter:\n\n---\nname: review\ndescription: Senior code review checklist\n---\n\n# Review\n…instructions…',
+        );
+      } else {
+        const lines = deps.skills.map((s) => `  ${s.name.padEnd(18)} ${s.description} [${s.scope}]`);
+        host.print(`Installed skills (agent loads them with the use_skill tool):\n${lines.join('\n')}`);
+      }
+      return { kind: 'handled' };
+    }
+
+    case 'pentest': {
+      config.pentest = !config.pentest;
+      host.print(
+        config.pentest
+          ? 'Pentest mode ON — security-testing methodology is now in the system prompt.\n⚠ Use only on targets you are explicitly authorized to test. The agent will ask for scope/authorization if it is not clear.'
+          : 'Pentest mode OFF.',
+      );
+      return { kind: 'handled' };
+    }
+
+    case 'btw': {
+      if (!arg) {
+        host.print('Usage: /btw <question> — quick side question about what the agent is doing, without interrupting the current run.');
+        return { kind: 'handled' };
+      }
+      host.btw(arg);
+      return { kind: 'handled' };
+    }
+
+    case 'status': {
+      const s = deps.session();
+      host.print(
+        [
+          `Model:           ${config.model}${config.reasoningEffort ? ` (${config.reasoningEffort})` : ''}`,
+          `Provider:        ${config.provider} (${config.baseUrl})`,
+          `Repository:      ${config.cwd}`,
+          `Git branch:      ${deps.profile?.gitBranch ?? '(not a git repo)'}`,
+          `Permission mode: ${permissions.getMode()}`,
+          `Session:         ${s.data.id}`,
+          `Messages:        ${s.messages.length}`,
+        ].join('\n'),
+      );
+      return { kind: 'handled' };
+    }
+
+    case 'config': {
+      host.print(
+        [
+          `model:            ${config.model}`,
+          `provider:         ${config.provider}`,
+          `baseUrl:          ${config.baseUrl}`,
+          `apiKey:           ${maskKey(config.apiKey)}`,
+          `permissionMode:   ${config.permissionMode}`,
+          `maxTurns:         ${config.maxTurns}`,
+          `stream:           ${config.stream}`,
+          `compactThreshold: ${config.compactThreshold}`,
+          `cwd:              ${config.cwd}`,
+        ].join('\n'),
+      );
+      return { kind: 'handled' };
+    }
+
+    case 'permissions': {
+      if (!arg) {
+        host.print(
+          `Permission mode: ${permissions.getMode()}\n` +
+            'Modes:\n' +
+            '  default                     reads run free; edits, clicks and risky commands ask\n' +
+            '  askAll                      EVERY action asks for approval first\n' +
+            '  acceptEdits                 file edits/clicks auto-approved; destructive shell still asks\n' +
+            '  plan                        inspect and plan only — no mutations, no command execution\n' +
+            '  dangerouslySkipPermissions  everything runs without asking (dangerous)\n' +
+            'Change with: /permissions <mode>',
+        );
+      } else if (arg === 'default' || arg === 'askAll' || arg === 'acceptEdits' || arg === 'plan' || arg === 'dangerouslySkipPermissions') {
+        permissions.setMode(arg);
+        host.print(`Permission mode set to: ${arg}${arg === 'dangerouslySkipPermissions' ? ' — every tool now runs without asking. Be careful.' : ''}${arg === 'askAll' ? ' — every action will ask first. Use "Yes, and allow similar this session" to reduce friction.' : ''}`);
+      } else {
+        host.print(`Unknown mode "${arg}". Expected: default | askAll | acceptEdits | plan | dangerouslySkipPermissions`);
+      }
+      return { kind: 'handled' };
+    }
+
+    case 'diff':
+    case 'git': {
+      const tool = registry.get(name === 'diff' ? 'git_diff' : 'git_status');
+      if (!tool) return { kind: 'unknown', name };
+      const res = await tool.execute({} as never, { cwd: config.cwd });
+      host.print(res.content);
+      return { kind: 'handled' };
+    }
+
+    case 'init': {
+      return {
+        kind: 'prompt',
+        text:
+          'Analyze this repository and create an OX.md instruction file at the repository root. ' +
+          'Explore the structure, read key configuration and entry files, then write a concise OX.md ' +
+          'covering: project purpose, tech stack, build/test commands, directory layout, code conventions, ' +
+          'and anything an AI coding agent must know to work here safely. If OX.md already exists, ' +
+          'review and improve it instead of overwriting blindly.',
+      };
+    }
+
+    case 'resume': {
+      const id = await host.pickSession();
+      if (!id) {
+        host.print('Resume cancelled.');
+        return { kind: 'handled' };
+      }
+      const session = sessionStore.load(id);
+      if (!session) {
+        host.print(`Could not load session ${id}.`);
+        return { kind: 'handled' };
+      }
+      host.loadSession(session);
+      host.print(`Resumed session ${session.data.id} (${session.messages.length} messages).`);
+      return { kind: 'handled' };
+    }
+
+    case 'doctor': {
+      host.print(await runDoctor(deps));
+      return { kind: 'handled' };
+    }
+
+    case 'mcp': {
+      if (!deps.mcp || deps.mcp.statuses.length === 0) {
+        host.print('No MCP servers configured. Add one with: ox mcp add <name> -- <command> [args...]');
+      } else {
+        const lines = deps.mcp.statuses.map((s) =>
+          s.status === 'connected'
+            ? `  ✓ ${s.name} — ${s.tools.length} tool${s.tools.length === 1 ? '' : 's'}`
+            : `  ✗ ${s.name} — failed: ${s.error}`,
+        );
+        host.print(`MCP servers:\n${lines.join('\n')}`);
+      }
+      return { kind: 'handled' };
+    }
+
+    default: {
+      const custom = loadCustomCommands(config.cwd);
+      const cmd = custom.get(name);
+      if (cmd) {
+        return { kind: 'prompt', text: expandCustomCommand(cmd, arg) };
+      }
+      return { kind: 'unknown', name };
+    }
+  }
+}
+
+/** Merge a key into the project settings file (<cwd>/.ox/settings.json). */
+function saveProjectSetting(cwd: string, key: string, value: unknown): string {
+  const dir = path.join(cwd, '.ox');
+  const file = path.join(dir, 'settings.json');
+  let existing: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      existing = parsed as Record<string, unknown>;
+    }
+  } catch {
+    /* missing or invalid file — start fresh */
+  }
+  existing[key] = value;
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(existing, null, 2) + '\n', 'utf8');
+  return file;
+}
+
+async function check(name: string, fn: () => Promise<string>): Promise<string> {
+  try {
+    return `  ✓ ${name}: ${await fn()}`;
+  } catch (e) {
+    return `  ✗ ${name}: ${(e as Error).message}`;
+  }
+}
+
+async function runDoctor(deps: CommandDeps): Promise<string> {
+  const { config } = deps;
+  const lines: string[] = ['OxCode doctor'];
+
+  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  lines.push(nodeMajor >= 22 ? `  ✓ Node.js: ${process.version}` : `  ✗ Node.js: ${process.version} (Node 22+ required)`);
+
+  lines.push(await check('Git', async () => (await execa('git', ['--version'], { timeout: 5000 })).stdout.trim()));
+  lines.push(
+    (await check('ripgrep', async () => (await execa('rg', ['--version'], { timeout: 5000 })).stdout.split('\n')[0]!.trim())) +
+      ' (optional — Node fallback is used when missing)',
+  );
+  lines.push(`  ✓ Shell: ${process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'}`);
+  lines.push(
+    (await isGitRepo(config.cwd)) ? `  ✓ Repository: git repo at ${config.cwd}` : `  ⚠ Repository: ${config.cwd} is not a git repo`,
+  );
+  lines.push(config.apiKey ? `  ✓ API key: ${maskKey(config.apiKey)}` : '  ✗ API key: not set (set OPENROUTER_API_KEY)');
+
+  if (config.apiKey && config.provider === 'openrouter') {
+    lines.push(
+      await check('Provider connectivity', async () => {
+        const res = await fetch(`${config.baseUrl.replace(/\/$/, '')}/models`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return `${config.baseUrl} reachable`;
+      }),
+    );
+  }
+
+  const settingsFile = path.join(config.cwd, '.ox', 'settings.json');
+  lines.push(fs.existsSync(settingsFile) ? `  ✓ Project settings: ${settingsFile}` : '  · Project settings: none (using defaults)');
+  return lines.join('\n');
+}
