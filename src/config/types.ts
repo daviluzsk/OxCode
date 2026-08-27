@@ -58,7 +58,7 @@ export interface ResolvedConfig {
 
 export const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
-export const DEFAULT_MAX_TURNS = 100;
+export const DEFAULT_MAX_TURNS = 200;
 export const DEFAULT_COMPACT_THRESHOLD = 120_000;
 
 export const defaultConfig: Omit<ResolvedConfig, 'cwd' | 'apiKey'> = {

@@ -16,7 +16,7 @@ describe('config precedence', () => {
     expect(cfg.model).toBe('nvidia/nemotron-3-ultra-550b-a55b:free');
     expect(cfg.baseUrl).toBe('https://openrouter.ai/api/v1');
     expect(cfg.permissionMode).toBe('default');
-    expect(cfg.maxTurns).toBe(100);
+    expect(cfg.maxTurns).toBe(200);
   });
 
   it('env beats defaults; user config beats env; project beats user; CLI beats all', () => {

@@ -82,6 +82,37 @@ describe('OpenRouterProvider (mocked fetch)', () => {
     expect(res.text).toBe('recovered');
   });
 
+  it('aborts a stalled stream instead of hanging forever', async () => {
+    const prev = process.env.OX_STREAM_TIMEOUT_MS;
+    process.env.OX_STREAM_TIMEOUT_MS = '250';
+    try {
+      // fetch resolves, but the body never sends a byte — like a hung provider.
+      // The mock honors the abort signal (as real fetch does) so the watchdog
+      // can cancel the read.
+      const provider = new OpenRouterProvider({
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.test/v1',
+        maxRetries: 0,
+        fetchImpl: async (_url, init) => {
+          const signal = (init as RequestInit).signal;
+          const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+              signal?.addEventListener('abort', () => controller.error(new DOMException('aborted', 'AbortError')), { once: true });
+              // otherwise: never enqueue, never close → stalled
+            },
+          });
+          return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+        },
+      });
+      const start = Date.now();
+      await expect(collectStream(provider.stream({ model: 'm', messages: [], tools: [] }))).rejects.toThrow(/stall|timed|timeout/i);
+      expect(Date.now() - start).toBeLessThan(3000); // did not hang
+    } finally {
+      if (prev === undefined) delete process.env.OX_STREAM_TIMEOUT_MS;
+      else process.env.OX_STREAM_TIMEOUT_MS = prev;
+    }
+  }, 6000);
+
   it('does not retry auth failures and gives a useful error', async () => {
     let attempts = 0;
     const provider = new OpenRouterProvider({

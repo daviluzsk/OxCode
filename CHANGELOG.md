@@ -5,6 +5,15 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed
+- **No more infinite "Thinking…" hangs.** The model request had no timeout, so a
+  provider connection that stalled (open socket, no bytes, no `[DONE]`) left the
+  agent stuck forever until Ctrl+C. Added an idle watchdog that aborts the stream
+  when nothing arrives for a while (default 120s, `OX_STREAM_TIMEOUT_MS`), retries
+  a stalled connect, and surfaces a clear "stream stalled" error mid-stream — Ctrl+C
+  still works. Raised the default turn limit 100 → 200 so long agentic runs (e.g.
+  full pentests) stop hitting the cap prematurely.
+
 ### Changed
 - **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
   (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`

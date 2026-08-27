@@ -88,6 +88,13 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/** Abort a stream that goes silent for too long (a hung provider connection).
+ * Configurable via OX_STREAM_TIMEOUT_MS; read at call time so it stays testable. */
+function streamIdleMs(): number {
+  const v = Number(process.env.OX_STREAM_TIMEOUT_MS);
+  return Number.isFinite(v) && v >= 200 ? v : 120_000;
+}
+
 function backoffMs(attempt: number, retryAfterMs?: number): number {
   if (retryAfterMs && retryAfterMs > 0) return Math.min(retryAfterMs, 60_000);
   const base = Math.min(1000 * 2 ** attempt, 16_000);
@@ -170,20 +177,52 @@ export class OpenRouterProvider implements ModelProvider {
 
     logger.log('api.request', { model: request.model, messages: request.messages.length });
 
+    // Idle watchdog: abort the request if the provider sends nothing for too
+    // long (connection hangs open with no bytes and no [DONE] → "Thinking…"
+    // forever). Linked to the user's cancel signal so Ctrl+C still works.
+    const ac = new AbortController();
+    const userSignal = request.signal;
+    const onUserAbort = () => ac.abort();
+    if (userSignal) {
+      if (userSignal.aborted) ac.abort();
+      else userSignal.addEventListener('abort', onUserAbort, { once: true });
+    }
+    let timedOut = false;
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    const bump = () => {
+      if (idle) clearTimeout(idle);
+      idle = setTimeout(() => {
+        timedOut = true;
+        ac.abort();
+      }, streamIdleMs());
+    };
+    const idleCleanup = () => {
+      if (idle) clearTimeout(idle);
+      idle = undefined;
+      if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
+    };
+    const wrapErr = (err: unknown): ApiError =>
+      timedOut
+        ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
+        : ApiError.network(err);
+
     const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
     let response: Response;
+    bump();
     try {
       response = await fetchImpl(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-        signal: request.signal ?? null,
+        signal: ac.signal,
       });
     } catch (err) {
-      throw ApiError.network(err);
+      idleCleanup();
+      throw wrapErr(err);
     }
 
     if (!response.ok) {
+      idleCleanup();
       const retryAfter = response.headers.get('retry-after');
       const text = await response.text().catch(() => '');
       throw ApiError.fromStatus(
@@ -194,6 +233,7 @@ export class OpenRouterProvider implements ModelProvider {
     }
 
     if (!response.body) {
+      idleCleanup();
       throw new ApiError('Provider returned an empty response body.', 'invalid-response');
     }
 
@@ -207,6 +247,7 @@ export class OpenRouterProvider implements ModelProvider {
     try {
       for (;;) {
         const { done, value } = await reader.read();
+        bump(); // got activity — reset the idle watchdog
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         for (const event of parser.feed(chunk)) {
@@ -225,14 +266,16 @@ export class OpenRouterProvider implements ModelProvider {
         }
       }
     } catch (err) {
+      const wrapped = wrapErr(err);
       if (emittedAny) {
-        // Mid-stream network failure: surface as an error event, do not retry
-        // (content was already delivered to the caller).
-        yield { type: 'error', error: ApiError.network(err) };
+        // Content already delivered — surface as an error event, do not retry
+        // (avoids duplicating the partial output on a stall/network drop).
+        yield { type: 'error', error: wrapped };
         return;
       }
-      throw ApiError.network(err);
+      throw wrapped;
     } finally {
+      idleCleanup();
       reader.releaseLock();
     }
 
