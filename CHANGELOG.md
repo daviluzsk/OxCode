@@ -6,6 +6,11 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Click a worker to inspect it.** Clicking a worker opens a panel with an
+  **Activity** tab — that agent's live transcript (tools it runs, messages it sends
+  and receives, status changes, blackboard posts) — plus the **Wardrobe** tab and a
+  **Follow** button that eases the camera to track the worker as it walks. Integration
+  test covers the task-tool ↔ swarm wiring end-to-end with the mock provider.
 - **Agents can talk to each other.** Every swarm worker gets two tools:
   `hive_message(to, message)` to send a real message to a teammate (by role, label,
   or "all") — shown as a spoken line and a link in the office — and `hive_read()` to

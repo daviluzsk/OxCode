@@ -33,9 +33,17 @@ export const VIEWER_HTML = String.raw`<!doctype html>
   .bubble { position: fixed; transform: translate(-50%, -100%); pointer-events: none; background: #e6edf3; color: #0b0e14; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 8px; max-width: 200px; box-shadow: 0 4px 14px rgba(0,0,0,.5); transition: opacity .3s; z-index: 5; }
   .bubble::after { content: ""; position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #e6edf3; border-bottom: 0; }
   .tag { position: fixed; transform: translate(-50%, -50%); pointer-events: none; font-size: 10px; color: #cbd5e1; text-shadow: 0 1px 3px #000; white-space: nowrap; z-index: 4; }
-  #customize { top: 50%; left: 12px; transform: translateY(-50%); width: 232px; padding: 12px 14px; display: none; z-index: 10; }
+  #customize { top: 50%; left: 12px; transform: translateY(-50%); width: 256px; padding: 12px 14px; display: none; z-index: 10; }
   #customize h2 { margin: 0 0 2px; font-size: 13px; }
-  #customize .who { font-size: 11px; color: #38bdf8; margin-bottom: 8px; }
+  #customize .who { font-size: 13px; font-weight: bold; color: #e6edf3; }
+  #customize .who2 { font-size: 11px; color: #8b98a5; margin-bottom: 8px; }
+  #customize .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  #customize .tabs button { flex: 1; font: inherit; font-size: 11px; padding: 5px; border-radius: 6px; border: 1px solid #334; background: #131a24; color: #cbd5e1; cursor: pointer; }
+  #customize .tabs button.on { background: #234; border-color: #38bdf8; color: #fff; }
+  #cz-activity { max-height: 40vh; overflow: auto; font-size: 11px; }
+  #cz-activity .a { padding: 3px 0; border-bottom: 1px solid #1b2430; color: #a9b6c3; white-space: pre-wrap; word-break: break-word; }
+  #cz-activity .a .k { color: #60a5fa; }
+  #cz-activity .empty { color: #64748b; padding: 6px 0; }
   #customize .grp { margin-bottom: 9px; }
   #customize .grp label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8b98a5; margin-bottom: 4px; }
   #customize .sw { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -73,14 +81,19 @@ export const VIEWER_HTML = String.raw`<!doctype html>
   <div class="row"><span class="dot" style="background:#64748b"></span> done</div>
 </div>
 <div class="panel" id="customize">
-  <h2>Wardrobe</h2>
   <div class="who" id="cz-who"></div>
-  <div class="grp"><label>Shirt</label><div class="sw" id="cz-shirt"></div></div>
-  <div class="grp"><label>Pants</label><div class="sw" id="cz-pants"></div></div>
-  <div class="grp"><label>Hair</label><div class="sw" id="cz-hair"></div></div>
-  <div class="grp"><label>Skin</label><div class="sw" id="cz-skin"></div></div>
-  <div class="grp"><label>Accessories</label><div class="toggles"><button id="cz-glasses">Glasses</button><button id="cz-hat">Cap</button></div></div>
-  <div class="actions"><button id="cz-random">Randomize</button><button id="cz-close">Close</button></div>
+  <div class="who2" id="cz-status"></div>
+  <div class="tabs"><button id="tab-activity" class="on">Activity</button><button id="tab-wardrobe">Wardrobe</button><button id="cz-follow">Follow</button></div>
+  <div id="pane-activity"><div id="cz-activity"></div></div>
+  <div id="pane-wardrobe" style="display:none">
+    <div class="grp"><label>Shirt</label><div class="sw" id="cz-shirt"></div></div>
+    <div class="grp"><label>Pants</label><div class="sw" id="cz-pants"></div></div>
+    <div class="grp"><label>Hair</label><div class="sw" id="cz-hair"></div></div>
+    <div class="grp"><label>Skin</label><div class="sw" id="cz-skin"></div></div>
+    <div class="grp"><label>Accessories</label><div class="toggles"><button id="cz-glasses">Glasses</button><button id="cz-hat">Cap</button></div></div>
+    <div class="actions"><button id="cz-random">Randomize</button></div>
+  </div>
+  <div class="actions"><button id="cz-close">Close</button></div>
 </div>
 <div id="empty"><div class="big">Waiting for the swarm&hellip;</div><div>Run a task with <code>/swarm</code> active &mdash; workers appear here.</div></div>
 
@@ -502,7 +515,8 @@ function makeAgent(ev){
   const tag = document.createElement('div'); tag.className='tag'; tag.textContent = ev.label; overlay.appendChild(tag);
   const a = { id: ev.id, label: ev.label, role: ev.role, seat, root, outfit, status:'spawning',
     tag, bubble:null, bubbleUntil:0, phase: Math.random()*6, intensity:0.5, done:false,
-    state:'sit', queue:[], pauseUntil:0, walkPhase:0, blinkAt: performance.now()+rand(1500,5000), nextWander: performance.now()+rand(6000,14000) };
+    state:'sit', queue:[], pauseUntil:0, walkPhase:0, blinkAt: performance.now()+rand(1500,5000), nextWander: performance.now()+rand(6000,14000),
+    activity:[] };
   agents.set(ev.id, a);
   document.getElementById('empty').style.display='none';
   refreshStats();
@@ -514,6 +528,7 @@ function setStatus(a, status){
   const t = a.root.userData.parts.torso;
   t.material.emissive.setHex(c); t.material.emissiveIntensity = status==='working'?0.35:0.15;
   a.intensity = status==='working'?1.5 : status==='thinking'?0.8 : 0.3;
+  if(selected===a.id && CZ.style.display!=='none'){ const s=document.getElementById('cz-status'); if(s) s.textContent=a.role+' · '+status; }
   refreshStats();
 }
 function speak(a, text){
@@ -566,15 +581,22 @@ function addLog(who, msg){
   while(list.children.length>60) list.lastChild.remove();
 }
 
+// per-agent activity feed (drives the click-to-inspect panel)
+function activity(id, kind, text){
+  const a=agents.get(id); if(!a) return;
+  a.activity.push({ kind, text, t: Date.now() });
+  if(a.activity.length>200) a.activity.shift();
+  if(selected===id && CZ.style.display!=='none' && curTab==='activity') appendActivityRow(kind, text);
+}
 function handle(ev){
   switch(ev.type){
-    case 'agent_spawned': if(!agents.has(ev.id)){ makeAgent(ev); addLog(ev.id,'joined as '+ev.role); } break;
-    case 'agent_status': { const a=agents.get(ev.id); if(a) setStatus(a, ev.status); break; }
-    case 'agent_tool': { const a=agents.get(ev.id); if(a && ev.phase==='start'){ setStatus(a,'working'); addLog(ev.id, ev.tool+' '+ev.summary); } break; }
-    case 'agent_message': { const a=agents.get(ev.id); if(a){ speak(a,ev.text); addLog(ev.id,ev.text); } break; }
-    case 'communication': link(ev.from, ev.to, ev.text); addLog(ev.from, '→ '+(ev.to==='all'?'everyone':(agents.get(ev.to)?.label ?? ev.to))+(ev.text?': '+ev.text:'')); break;
-    case 'blackboard': addBoard(ev.id, ev.note); { const a=agents.get(ev.id); if(a) link(ev.id,'all'); } break;
-    case 'agent_done': { const a=agents.get(ev.id); if(a){ setStatus(a, ev.status==='error'?'error':'done'); a.done=true; addLog(ev.id,'finished ('+ev.status+')'); } break; }
+    case 'agent_spawned': if(!agents.has(ev.id)){ makeAgent(ev); addLog(ev.id,'joined as '+ev.role); activity(ev.id,'join','joined as '+ev.role); } break;
+    case 'agent_status': { const a=agents.get(ev.id); if(a){ setStatus(a, ev.status); activity(ev.id,'status', ev.status); } break; }
+    case 'agent_tool': { const a=agents.get(ev.id); if(a && ev.phase==='start'){ setStatus(a,'working'); addLog(ev.id, ev.tool+' '+ev.summary); activity(ev.id, ev.tool, ev.summary); } break; }
+    case 'agent_message': { const a=agents.get(ev.id); if(a){ speak(a,ev.text); addLog(ev.id,ev.text); activity(ev.id,'says', ev.text); } break; }
+    case 'communication': { link(ev.from, ev.to, ev.text); const toL=ev.to==='all'?'everyone':(agents.get(ev.to)?.label ?? ev.to); addLog(ev.from, '→ '+toL+(ev.text?': '+ev.text:'')); activity(ev.from,'→ '+toL, ev.text||''); if(ev.to!=='all') activity(ev.to,'← '+(agents.get(ev.from)?.label ?? ev.from), ev.text||''); break; }
+    case 'blackboard': addBoard(ev.id, ev.note); { const a=agents.get(ev.id); if(a){ link(ev.id,'all'); activity(ev.id,'board', ev.note); } } break;
+    case 'agent_done': { const a=agents.get(ev.id); if(a){ setStatus(a, ev.status==='error'?'error':'done'); a.done=true; addLog(ev.id,'finished ('+ev.status+')'); activity(ev.id,'done', ev.status); } break; }
   }
 }
 
@@ -597,17 +619,30 @@ renderer.domElement.addEventListener('pointerup', (e)=>{
 });
 
 const CZ = document.getElementById('customize');
+let curTab='activity', followId=null;
 function swatches(hostId, colors, get, set){
   const host=document.getElementById(hostId); host.innerHTML='';
   for(const c of colors){ const b=document.createElement('button');
     b.style.background='#'+c.toString(16).padStart(6,'0');
     if(get()===c) b.classList.add('on');
-    b.onclick=()=>{ set(c); renderCustomize(); }; host.appendChild(b); }
+    b.onclick=()=>{ set(c); renderWardrobe(); }; host.appendChild(b); }
 }
-function openCustomize(id){ selected=id; renderCustomize(); CZ.style.display='block'; }
-function renderCustomize(){
-  const a=agents.get(selected); if(!a){ CZ.style.display='none'; return; }
-  document.getElementById('cz-who').textContent=a.label+' · '+a.role;
+function appendActivityRow(kind, text){
+  const host=document.getElementById('cz-activity');
+  const empty=host.querySelector('.empty'); if(empty) empty.remove();
+  const el=document.createElement('div'); el.className='a';
+  const k=document.createElement('span'); k.className='k'; k.textContent=kind+' ';
+  el.appendChild(k); el.appendChild(document.createTextNode(text||''));
+  host.appendChild(el); host.scrollTop=host.scrollHeight;
+  while(host.children.length>200) host.firstChild.remove();
+}
+function renderActivity(){
+  const a=agents.get(selected); const host=document.getElementById('cz-activity'); host.innerHTML='';
+  if(!a || a.activity.length===0){ host.innerHTML='<div class="empty">No activity yet…</div>'; return; }
+  for(const e of a.activity) appendActivityRow(e.kind, e.text);
+}
+function renderWardrobe(){
+  const a=agents.get(selected); if(!a) return;
   const o=a.outfit; const commit=()=>{ applyOutfit(a,o); saveOutfit(a.label,o); };
   swatches('cz-shirt', SHIRTS, ()=>o.shirt, v=>{o.shirt=v;commit();});
   swatches('cz-pants', PANTS, ()=>o.pants, v=>{o.pants=v;commit();});
@@ -615,14 +650,32 @@ function renderCustomize(){
   swatches('cz-skin', SKIN, ()=>o.skin, v=>{o.skin=v;commit();});
   const gb=document.getElementById('cz-glasses'), hb=document.getElementById('cz-hat');
   gb.classList.toggle('on', !!o.glasses); hb.classList.toggle('on', !!o.hat);
-  gb.onclick=()=>{ o.glasses=!o.glasses; commit(); renderCustomize(); };
-  hb.onclick=()=>{ o.hat=!o.hat; commit(); renderCustomize(); };
+  gb.onclick=()=>{ o.glasses=!o.glasses; commit(); renderWardrobe(); };
+  hb.onclick=()=>{ o.hat=!o.hat; commit(); renderWardrobe(); };
 }
+function setTab(t){
+  curTab=t;
+  document.getElementById('tab-activity').classList.toggle('on', t==='activity');
+  document.getElementById('tab-wardrobe').classList.toggle('on', t==='wardrobe');
+  document.getElementById('pane-activity').style.display = t==='activity'?'block':'none';
+  document.getElementById('pane-wardrobe').style.display = t==='wardrobe'?'block':'none';
+  if(t==='activity') renderActivity(); else renderWardrobe();
+}
+function openCustomize(id){
+  selected=id; const a=agents.get(id); if(!a) return;
+  document.getElementById('cz-who').textContent=a.label;
+  document.getElementById('cz-status').textContent=a.role+' · '+a.status;
+  document.getElementById('cz-follow').classList.toggle('on', followId===id);
+  CZ.style.display='block'; setTab('activity');
+}
+document.getElementById('tab-activity').onclick=()=>setTab('activity');
+document.getElementById('tab-wardrobe').onclick=()=>setTab('wardrobe');
+document.getElementById('cz-follow').onclick=()=>{ followId = followId===selected ? null : selected; document.getElementById('cz-follow').classList.toggle('on', followId===selected); };
 document.getElementById('cz-close').onclick=()=>{ CZ.style.display='none'; selected=null; };
 document.getElementById('cz-random').onclick=()=>{ const a=agents.get(selected); if(!a) return;
   const r=()=>Math.floor(Math.random()*1e9);
   a.outfit={ shirt:SHIRTS[r()%SHIRTS.length], pants:PANTS[r()%PANTS.length], hair:HAIR[r()%HAIR.length], skin:SKIN[r()%SKIN.length], glasses:r()%2===0, hat:r()%3===0 };
-  applyOutfit(a,a.outfit); saveOutfit(a.label,a.outfit); renderCustomize(); };
+  applyOutfit(a,a.outfit); saveOutfit(a.label,a.outfit); renderWardrobe(); };
 
 // ---------- animation ----------
 const clock = new THREE.Clock();
@@ -695,6 +748,8 @@ function animate(){
     const tt=Math.min(1,(now-l.born)/l.dur); l.dot.position.copy(curve.getPoint(tt));
     l.tubeMat.opacity=Math.min(0.9, life/l.dur*0.9);
   }
+  // follow-camera: ease the orbit target onto the chosen worker
+  if(followId){ const fa=agents.get(followId); if(fa){ controls.target.lerp(fa.root.position, 0.08); } else followId=null; }
   controls.update(); renderer.render(scene,camera);
 }
 animate();
