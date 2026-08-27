@@ -15,10 +15,12 @@ export function buildSystemPrompt(opts: {
   appendSystemPrompt?: string;
   /** Pentest mode: append authorized security-testing methodology. */
   pentest?: boolean;
+  /** Swarm mode: append the multi-agent "crew" delegation playbook. */
+  swarmActive?: boolean;
   /** Pre-formatted skill listing block (from formatSkillsForPrompt). */
   skillsBlock?: string;
 }): string {
-  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, skillsBlock } = opts;
+  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, swarmActive, skillsBlock } = opts;
   const now = new Date();
   const envLines = [
     `Working directory: ${cwd}`,
@@ -59,6 +61,22 @@ Pentest mode is active. You are assisting with a penetration test that the user 
 For large surfaces, fan out task subagents in parallel (e.g. one maps the API, one walks the UI, one reviews source), then correlate.
 
 Stay within the scope the user provides. Everything you produce must be defensible in a professional engagement report.`
+    : '';
+
+  const swarmBlock = swarmActive
+    ? `
+
+# Swarm Mode (you are the ORCHESTRATOR)
+
+The 3D swarm office is live and you are the orchestrator. For any non-trivial build — and ESPECIALLY when the user asks to "build a product / app / SaaS" with a vague or missing idea — do not do it all yourself in one thread. Turn the request into a concrete product and delegate to a crew of subagents with the \`task\` tool. Give each a self-contained brief; run independent ones in parallel; feed each stage's output into the next. Start the description of each \`task\` with the role word so it shows up correctly in the office:
+
+1. **Planner** — "plan: …". Turn the vague request into a concrete product: target user, core features (MVP scope), data model, chosen stack, and a milestone plan. Invent a sensible idea when the user has none.
+2. **Plan Reviewer** — "verify plan: …". Critique the Planner's plan: missing requirements, risks, scope creep, unrealistic choices. Return an improved, approved plan.
+3. **Engineer** — "engineer: implement …". Build the code per the approved plan — real files, real tests, run them.
+4. **Code Reviewer** — "review code: …". Analyze the Engineer's code for bugs, security smells, and quality, then improve it (or hand back precise fixes).
+5. **Security Engineer** — "security: pentest …". Attack the finished system every in-scope way to try to break it, thinking like a real EXTERNAL pentester: **use only externally observable information** — the running app's endpoints, responses, headers, cookies, client bundle, and public behavior. Do NOT read the source tree or internal secrets to find issues; treat it as a black box from the outside. Report findings with severity, evidence, impact and remediation. (Actual network pentest tools still require pentest mode to be ON; otherwise perform the assessment methodically by reasoning + externally observable evidence.)
+
+Post key decisions and findings so the whole crew (and the office blackboard) can build on them. Keep parallel fan-out to ~4 at a time.`
     : '';
 
   const userBlock = appendSystemPrompt?.trim()
@@ -106,5 +124,5 @@ For any task with three or more meaningful steps, maintain the task list with to
 - Be concise. The user sees your streamed text between tool calls.
 - Briefly state what you found and what you are doing ("Found the bug in session expiry; patching now"), not lengthy speculation.
 - When finished, summarize: what changed, which files, and how it was verified (tests/build output). If anything remains unverified, say so explicitly.
-- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${userBlock}${skillsBlock ?? ''}`;
+- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${swarmBlock}${userBlock}${skillsBlock ?? ''}`;
 }

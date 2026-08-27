@@ -14,11 +14,12 @@ let AGENT_SEQ = 0;
 /** Guess a worker "role" from the subtask description for the office viewer. */
 function roleFor(description: string): string {
   const d = description.toLowerCase();
-  if (/(review|audit|lint)/.test(d)) return 'reviewer';
-  if (/(test|spec|coverage)/.test(d)) return 'tester';
-  if (/(security|pentest|vuln|exploit|attack)/.test(d)) return 'security';
+  if (/(security|pentest|vuln|exploit|attack|break|destroy|cyber)/.test(d)) return 'security';
+  if (/(review|audit|lint|verify|verific|validate|valida|evaluate|avalia|critique|assess)/.test(d)) return 'reviewer';
+  if (/(plan|planej|spec|design|architect|arquitet|requirement|requisito|roadmap|scope)/.test(d)) return 'planner';
+  if (/(test|spec|coverage|qa)/.test(d)) return 'tester';
   if (/(explore|find|locate|search|map|investigate|read|understand)/.test(d)) return 'explorer';
-  if (/(write|implement|build|add|fix|refactor|edit|code)/.test(d)) return 'coder';
+  if (/(write|implement|build|add|fix|refactor|edit|code|engineer|develop|program)/.test(d)) return 'coder';
   return 'worker';
 }
 

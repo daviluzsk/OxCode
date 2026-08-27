@@ -89,7 +89,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const ROLE_SHIRT = {
-  orchestrator: 0x2563eb, explorer: 0x7c3aed, coder: 0x16a34a,
+  orchestrator: 0x2563eb, planner: 0xf59e0b, explorer: 0x7c3aed, coder: 0x16a34a,
   reviewer: 0xdb2777, tester: 0xca8a04, security: 0xdc2626, worker: 0x475569,
 };
 const STATUS_COLORS = {
@@ -523,18 +523,26 @@ function speak(a, text){
 }
 
 const links = [];
+const _s = new THREE.Vector3(), _e = new THREE.Vector3(), _m = new THREE.Vector3();
+// Smooth arc whose endpoints follow the LIVE positions of both bots each frame
+// (bots walk around, so a link baked at emit-time would point at stale spots).
+function linkCurve(a, b){
+  a.root.getWorldPosition(_s); _s.y += 1.7;
+  b.root.getWorldPosition(_e); _e.y += 1.7;
+  _m.copy(_s).add(_e).multiplyScalar(0.5); _m.y += 2.4 + _s.distanceTo(_e)*0.09;
+  return new THREE.QuadraticBezierCurve3(_s.clone(), _m.clone(), _e.clone());
+}
 function link(fromId, toId, text){
   const a = agents.get(fromId); if (!a) return;
   const targets = toId==='all' ? [...agents.values()].filter(x=>x!==a) : [agents.get(toId)].filter(Boolean);
+  const DUR = 1700;
   for (const b of targets){
-    const s = a.root.position.clone(); s.y=1.7;
-    const e = b.root.position.clone(); e.y=1.7;
-    const mid = s.clone().add(e).multiplyScalar(0.5); mid.y += 2.6 + s.distanceTo(e)*0.08;
-    const curve = new THREE.QuadraticBezierCurve3(s, mid, e);
-    const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve,20,0.035,6,false), new THREE.MeshBasicMaterial({color:0x38bdf8,transparent:true,opacity:0.9}));
-    scene.add(mesh); links.push({ mesh, mat: mesh.material, until: performance.now()+1600 });
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), new THREE.MeshBasicMaterial({color:0x7dd3fc}));
-    scene.add(dot); links.push({ mesh: dot, mat: dot.material, until: performance.now()+1600, curve, born: performance.now(), dur: 1600, dot });
+    const tubeMat = new THREE.MeshBasicMaterial({ color:0x38bdf8, transparent:true, opacity:0.9 });
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(linkCurve(a,b), 44, 0.032, 8, false), tubeMat);
+    scene.add(tube);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,10), new THREE.MeshBasicMaterial({ color:0x7dd3fc }));
+    scene.add(dot);
+    links.push({ a, b, tube, tubeMat, dot, born: performance.now(), dur: DUR, until: performance.now()+DUR });
   }
   if (text) speak(a, text);
 }
@@ -679,9 +687,13 @@ function animate(){
       const bp=toScreen(a.root,2.3); a.bubble.style.left=bp.x+'px'; a.bubble.style.top=(bp.y-8)+'px'; a.bubble.style.display=p.vis?'block':'none'; }
   }
   for(let i=links.length-1;i>=0;i--){ const l=links[i];
-    if(l.dot&&l.curve){ const tt=Math.min(1,(now-l.born)/l.dur); l.dot.position.copy(l.curve.getPoint(tt)); }
-    const life=l.until-now; if(life<=0){ scene.remove(l.mesh); l.mesh.geometry?.dispose?.(); links.splice(i,1); continue; }
-    l.mat.opacity=Math.min(0.9, life/1600*0.9);
+    const life=l.until-now;
+    if(life<=0 || l.a.done && l.b.done){ scene.remove(l.tube); scene.remove(l.dot); l.tube.geometry.dispose(); l.dot.geometry.dispose(); links.splice(i,1); continue; }
+    // rebuild the arc from the bots' CURRENT positions every frame -> it tracks them as they walk
+    const curve=linkCurve(l.a,l.b);
+    l.tube.geometry.dispose(); l.tube.geometry=new THREE.TubeGeometry(curve,44,0.032,8,false);
+    const tt=Math.min(1,(now-l.born)/l.dur); l.dot.position.copy(curve.getPoint(tt));
+    l.tubeMat.opacity=Math.min(0.9, life/l.dur*0.9);
   }
   controls.update(); renderer.render(scene,camera);
 }

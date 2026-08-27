@@ -101,6 +101,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
       permissionMode: config.permissionMode,
       appendSystemPrompt: config.appendSystemPrompt,
       pentest: config.pentest,
+      swarmActive: swarm.running,
       skillsBlock: formatSkillsForPrompt(skills),
     });
 

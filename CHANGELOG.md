@@ -6,6 +6,20 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Orchestrator crew playbook.** With swarm mode active, when you ask the agent to
+  build something — especially a vague "build me a SaaS" — the orchestrator now
+  spins up a standard crew via subtasks: a **Planner** (turns the vague ask into a
+  concrete product), a **Plan Reviewer**, an **Engineer** (writes the code), a
+  **Code Reviewer** (analyzes and improves it), and a **Security Engineer** that
+  black-box pentests the result using only externally observable information, like
+  a real external pentester. Roles are colored in the office (Planner is amber).
+
+### Fixed
+- **Communication wires now track the bots.** The blue links between workers are
+  rebuilt from each bot's live position every frame (and are smoother), so a link
+  no longer points at where a bot *was* when it now walks around the office.
+
+### Added (earlier this cycle)
 - **Swarm mode — a live 3D "office" visualization of the agent swarm.** `ox --swarm`
   or `/swarm` opens a self-contained Three.js page (served by a tiny built-in
   SSE server on `127.0.0.1`) where each parallel subtask appears as a worker at a
