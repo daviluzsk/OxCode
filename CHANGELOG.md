@@ -6,6 +6,12 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Agents can talk to each other.** Every swarm worker gets two tools:
+  `hive_message(to, message)` to send a real message to a teammate (by role, label,
+  or "all") — shown as a spoken line and a link in the office — and `hive_read()` to
+  see recent messages and the shared blackboard before responding. The crew playbook
+  now tells agents to actually use them (e.g. the Plan Reviewer questioning the
+  Planner, the Security Engineer flagging a hole to the Engineer) instead of guessing.
 - **Orchestrator crew playbook.** With swarm mode active, when you ask the agent to
   build something — especially a vague "build me a SaaS" — the orchestrator now
   spins up a standard crew via subtasks: a **Planner** (turns the vague ask into a

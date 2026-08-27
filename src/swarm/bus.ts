@@ -14,6 +14,10 @@ export class SwarmBus extends EventEmitter {
   readonly startedAt = Date.now();
   private readonly buffer: SwarmEvent[] = [];
   private readonly board: Array<{ id: string; note: string; t: number }> = [];
+  /** id -> {label, role} for every worker that has joined (target resolution). */
+  private readonly roster = new Map<string, { label: string; role: string }>();
+  /** Recent things workers said to each other (for hive_read). */
+  private readonly chat: Array<{ from: string; to: string; text: string; t: number }> = [];
 
   emitEvent(event: SwarmEvent): void {
     this.buffer.push(event);
@@ -22,7 +26,42 @@ export class SwarmBus extends EventEmitter {
       this.board.push({ id: event.id, note: event.note, t: event.t });
       if (this.board.length > MAX_BLACKBOARD) this.board.shift();
     }
+    if (event.type === 'agent_spawned') this.roster.set(event.id, { label: event.label, role: event.role });
+    if ((event.type === 'communication' || event.type === 'agent_message') && 'text' in event && event.text) {
+      const from = event.type === 'communication' ? event.from : event.id;
+      const to = event.type === 'communication' ? event.to : 'all';
+      this.chat.push({ from, to, text: event.text, t: event.t });
+      if (this.chat.length > MAX_BLACKBOARD) this.chat.shift();
+    }
     this.emit('event', event);
+  }
+
+  /** All joined workers. */
+  members(): Array<{ id: string; label: string; role: string }> {
+    return [...this.roster.entries()].map(([id, v]) => ({ id, ...v }));
+  }
+
+  /** Resolve a free-text recipient (exact label, substring, or role) to an id. */
+  resolveTarget(name: string, exclude?: string): string {
+    const q = name.trim().toLowerCase();
+    if (q === 'all' || q === 'everyone' || q === '*' || q === '') return 'all';
+    const list = this.members().filter((m) => m.id !== exclude);
+    return (
+      list.find((m) => m.label.toLowerCase() === q)?.id ??
+      list.find((m) => m.role.toLowerCase() === q)?.id ??
+      list.find((m) => m.label.toLowerCase().includes(q))?.id ??
+      list.find((m) => m.role.toLowerCase().includes(q))?.id ??
+      'all'
+    );
+  }
+
+  /** Recent inter-agent chatter (for hive_read). */
+  chatter(limit = 20): Array<{ from: string; to: string; text: string; t: number }> {
+    return this.chat.slice(-limit);
+  }
+
+  labelOf(id: string): string {
+    return this.roster.get(id)?.label ?? id;
   }
 
   /** Subscribe to live events; returns an unsubscribe function. */

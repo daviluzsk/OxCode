@@ -23,6 +23,58 @@ function roleFor(description: string): string {
   return 'worker';
 }
 
+/** Per-worker tools for talking to the rest of the swarm (bound to one agent id). */
+function hiveTools(swarm: SwarmController, selfId: string): ToolDefinition[] {
+  const sendSchema = z.object({
+    to: z.string().min(1).describe('Recipient: a role (planner, reviewer, engineer, security, tester, explorer, orchestrator), a worker label, or "all".'),
+    message: z.string().min(1).max(400).describe('A real, specific message — a finding, question, decision or hand-off.'),
+  });
+  const send: ToolDefinition<z.infer<typeof sendSchema>> = {
+    name: 'hive_message',
+    description: 'Send a message to another agent (or "all") in the swarm. Use it to ask a teammate, flag a bug to whoever owns that code, or hand off a result. It shows up as a spoken line and a link in the office.',
+    parameters: {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'role, worker label, or "all"' },
+        message: { type: 'string', description: 'the message' },
+      },
+      required: ['to', 'message'],
+    },
+    schema: sendSchema,
+    kind: 'read',
+    mutating: false,
+    summarize: (a) => `→ ${a.to}: ${a.message.slice(0, 40)}`,
+    async execute(a): Promise<ToolResult> {
+      const target = swarm.bus.resolveTarget(a.to, selfId);
+      swarm.emit.comm(selfId, target, a.message);
+      const who = target === 'all' ? 'everyone' : swarm.bus.labelOf(target);
+      return ok(`Message delivered to ${who}.`);
+    },
+  };
+  const readSchema = z.object({});
+  const read: ToolDefinition<z.infer<typeof readSchema>> = {
+    name: 'hive_read',
+    description: 'Read the latest messages between agents and the shared blackboard findings, so you can respond to teammates and avoid repeating their work.',
+    parameters: { type: 'object', properties: {}, required: [] },
+    schema: readSchema,
+    kind: 'read',
+    mutating: false,
+    summarize: () => 'read hive',
+    async execute(): Promise<ToolResult> {
+      const chat = swarm.bus.chatter(20).map((c) => `[${swarm.bus.labelOf(c.from)} -> ${c.to === 'all' ? 'all' : swarm.bus.labelOf(c.to)}] ${c.text}`);
+      const board = swarm.bus.blackboard().slice(-12).map((n) => `- ${n.note}`);
+      const members = swarm.bus.members().map((m) => `${m.label} (${m.role})`);
+      const out = [
+        members.length ? `Crew: ${members.join(', ')}` : 'No other workers yet.',
+        chat.length ? `\nRecent messages:\n${chat.join('\n')}` : '\nNo messages yet.',
+        board.length ? `\nBlackboard:\n${board.join('\n')}` : '',
+      ].join('\n');
+      return ok(out);
+    },
+  };
+  return [send, read];
+}
+
 const MAX_DEPTH = 2;
 const SUBAGENT_MAX_TURNS = 30;
 
@@ -106,6 +158,13 @@ export function createTaskTool(deps: TaskToolDeps): ToolDefinition<Args> {
             '\n\n# Hive shared memory\n\nOther agents working in parallel have already shared these findings — build on them, do not repeat their work:\n' +
             notes.slice(-12).map((n) => `- ${n.note}`).join('\n');
         }
+        // Give this worker tools to talk to the rest of the crew.
+        for (const t of hiveTools(swarm, agentId)) subRegistry.register(t);
+        hivePrompt +=
+          '\n\n# Talking to the crew\n\nYou are one worker in a live swarm. When it actually helps, TALK to your teammates instead of guessing:\n' +
+          '- `hive_read()` — see the latest messages and shared findings from the others.\n' +
+          '- `hive_message(to, message)` — send a message. `to` can be a role (planner, reviewer, engineer/coder, security, tester, explorer, orchestrator), a worker\'s label, or "all". Use it to ask a question, flag a bug to whoever owns that code, or hand off a result.\n' +
+          'Say real, specific things (a finding, a question, a decision) — do not chit-chat or repeat yourself.';
       }
 
       const agent = new Agent({

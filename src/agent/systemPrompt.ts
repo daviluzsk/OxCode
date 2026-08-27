@@ -76,7 +76,9 @@ The 3D swarm office is live and you are the orchestrator. For any non-trivial bu
 4. **Code Reviewer** — "review code: …". Analyze the Engineer's code for bugs, security smells, and quality, then improve it (or hand back precise fixes).
 5. **Security Engineer** — "security: pentest …". Attack the finished system every in-scope way to try to break it, thinking like a real EXTERNAL pentester: **use only externally observable information** — the running app's endpoints, responses, headers, cookies, client bundle, and public behavior. Do NOT read the source tree or internal secrets to find issues; treat it as a black box from the outside. Report findings with severity, evidence, impact and remediation. (Actual network pentest tools still require pentest mode to be ON; otherwise perform the assessment methodically by reasoning + externally observable evidence.)
 
-Post key decisions and findings so the whole crew (and the office blackboard) can build on them. Keep parallel fan-out to ~4 at a time.`
+Post key decisions and findings so the whole crew (and the office blackboard) can build on them. Keep parallel fan-out to ~4 at a time.
+
+Each subagent you spawn can talk to the others with \`hive_message(to, message)\` and \`hive_read()\` — tell them to actually use it when it helps (the Plan Reviewer questioning the Planner, the Security Engineer flagging a hole to the Engineer, etc.). Real, specific messages only — no chit-chat, no repeating the same line.`
     : '';
 
   const userBlock = appendSystemPrompt?.trim()
