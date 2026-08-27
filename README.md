@@ -301,6 +301,17 @@ description: Senior code review checklist
 | `inject_probe` | LFI / SSTI / command-injection detection PoC at a `FUZZ` marker |
 | `favicon_hash` | mmh3 favicon hash for Shodan/Censys pivoting |
 
+**Kali box — give the AI its own machine.** With Docker installed, OxCode can boot a disposable Kali Linux container that mounts your workspace at `/work` and run its whole pentest workflow inside it:
+
+| Tool | What it does |
+|---|---|
+| `kali_up` | Boot the Kali container and install a core tool set (nmap, sqlmap, nikto, gobuster, ffuf, wpscan, hydra, …) on first run |
+| `kali_run` | Run a command inside the box — the agent's pentesting desktop |
+| `kali_install` | `apt install` extra Kali packages on demand |
+| `kali_status` / `kali_down` | Show state / stop or remove the box |
+
+The box is isolated from the host (only the workspace is shared) and pentest-mode gated. If Docker isn't installed, the tools say so instead of failing.
+
 **Run the real tools.** Beyond the built-ins, OxCode can launch the genuine offensive binaries you already have installed and drive a real Burp Suite:
 
 | Tool | What it does |

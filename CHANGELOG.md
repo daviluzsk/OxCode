@@ -6,6 +6,13 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Kali box — the AI's own machine.** `kali_up` boots a disposable Kali Linux
+  container (Docker) that mounts the workspace at `/work` and installs a core
+  tool set on first run; `kali_run` executes commands inside it (the agent's
+  pentesting desktop — scans, tools, scripts); `kali_install` adds packages on
+  demand; `kali_status` / `kali_down` manage it. Isolated from the host (only the
+  workspace is shared), pentest-mode gated, and it degrades with a clear message
+  when Docker isn't installed.
 - **Refreshed welcome header + mascot.** The startup banner now leads with Oxxy,
   the OxCode ox mascot (`^__^ (oo) (__)`), a cleaner title/model/repo layout, and
   a two-column tips grid — closer to a modern agent CLI. The mascot also peeks out
