@@ -5,6 +5,11 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed
+- **Markdown now renders in the terminal** — assistant replies no longer show raw
+  `**bold**`, `*italic*`, `` `code` `` or `#` heading markers. A lightweight inline
+  renderer translates them to Ink styles and drops the markers.
+
 ### Added
 - **Interactive pickers for `/effort`, `/permissions`, and `/pentest`** — running
   them with no argument now opens an arrow-key menu (like `/model`) instead of

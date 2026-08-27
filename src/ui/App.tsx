@@ -23,6 +23,7 @@ import { TodoPanel } from './components/TodoPanel.js';
 import { displayPath } from '../utils/paths.js';
 import { estimateMessagesTokens } from '../agent/loop.js';
 import { formatCount, formatDuration } from '../utils/format.js';
+import { Markdown } from './markdown.js';
 
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -347,11 +348,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
 
       {streaming ? (
         <Box marginLeft={1} marginTop={1} flexDirection="column">
-          {streaming.split('\n').map((line, i) => (
-            <Text key={i} wrap="wrap">
-              {line}
-            </Text>
-          ))}
+          <Markdown text={streaming} />
         </Box>
       ) : null}
 

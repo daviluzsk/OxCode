@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 import { colors, symbols } from '../theme.js';
 import { ToolView, type ToolEntry } from './ToolView.js';
 import { formatDuration } from '../../utils/format.js';
+import { Markdown } from '../markdown.js';
 
 export type HistoryEntry =
   | { id: string; kind: 'user'; text: string }
@@ -22,18 +23,12 @@ export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Eleme
           </Text>
         </Box>
       );
-    case 'assistant': {
-      const paragraphs = entry.text.split('\n');
+    case 'assistant':
       return (
         <Box flexDirection="column" marginTop={1} marginLeft={1}>
-          {paragraphs.map((line, i) => (
-            <Text key={i} wrap="wrap">
-              {line}
-            </Text>
-          ))}
+          <Markdown text={entry.text} />
         </Box>
       );
-    }
     case 'tool':
       return <ToolView entry={entry.tool} />;
     case 'info':
