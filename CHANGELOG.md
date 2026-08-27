@@ -131,6 +131,10 @@ All notable changes to OxCode are documented here. Format loosely follows
   authorization before acting.
 
 ### Fixed
+- **Fewer rate-limit failures.** 429s now get their own, larger retry budget
+  (up to 12 attempts) with a longer per-minute-aware backoff that honors
+  `Retry-After` — so busy free tiers (NVIDIA NIM / Kimi, OpenRouter free) ride out
+  the limit and recover silently instead of failing the turn with a red error.
 - **Reasoning models no longer look frozen.** Models that stream their
   chain-of-thought (`reasoning_content` — Nemotron, DeepSeek-R, etc.) used to show
   a motionless "Thinking…" with no output until the answer arrived. Their reasoning

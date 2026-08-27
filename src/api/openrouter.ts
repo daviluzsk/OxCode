@@ -97,9 +97,13 @@ function streamIdleMs(): number {
   return Number.isFinite(v) && v >= 200 ? v : 120_000;
 }
 
-function backoffMs(attempt: number, retryAfterMs?: number): number {
+function backoffMs(attempt: number, retryAfterMs?: number, kind?: string): number {
   if (retryAfterMs && retryAfterMs > 0) return Math.min(retryAfterMs, 60_000);
-  const base = Math.min(1000 * 2 ** attempt, 16_000);
+  // Rate limits (esp. NVIDIA NIM) reset per-minute — back off longer so we
+  // ride out the window instead of hammering it.
+  const start = kind === 'rate-limit' ? 1500 : 1000;
+  const ceil = kind === 'rate-limit' ? 60_000 : 16_000;
+  const base = Math.min(start * 2 ** attempt, ceil);
   return base * (0.5 + Math.random() * 0.5); // jitter
 }
 
@@ -130,8 +134,13 @@ export class OpenRouterProvider implements ModelProvider {
   async *stream(request: ModelRequest): AsyncIterable<ModelEvent> {
     const fetchImpl = this.fetchImpl ?? fetch;
     let lastError: ApiError | undefined;
+    let attempt = 0;
+    let rateLimitAttempt = 0;
+    // Rate limits get their own, larger retry budget so a busy free tier
+    // (NVIDIA NIM, OpenRouter free) recovers instead of failing the turn.
+    const RATE_LIMIT_MAX = 12;
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    for (;;) {
       if (request.signal?.aborted) {
         yield { type: 'error', error: new ApiError('Request cancelled.', 'cancelled') };
         return;
@@ -146,9 +155,15 @@ export class OpenRouterProvider implements ModelProvider {
           return;
         }
         lastError = apiErr;
+        if (apiErr.kind === 'rate-limit') {
+          if (rateLimitAttempt >= RATE_LIMIT_MAX) break;
+          logger.log('api.retry', { kind: 'rate-limit', rateLimitAttempt });
+          await sleep(backoffMs(rateLimitAttempt++, apiErr.retryAfterMs, 'rate-limit'), request.signal);
+          continue;
+        }
         logger.log('api.retry', { attempt, kind: apiErr.kind, status: apiErr.status });
-        if (!apiErr.retriable || attempt === this.maxRetries) break;
-        await sleep(backoffMs(attempt, apiErr.retryAfterMs), request.signal);
+        if (!apiErr.retriable || attempt >= this.maxRetries) break;
+        await sleep(backoffMs(attempt++, apiErr.retryAfterMs, apiErr.kind), request.signal);
       }
     }
     yield { type: 'error', error: lastError ?? new ApiError('Unknown provider failure.', 'unknown') };
