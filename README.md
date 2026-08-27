@@ -280,6 +280,18 @@ description: Senior code review checklist
 | `web_fuzz` | Path/parameter fuzzing at a `FUZZ` marker with response clustering |
 | `jwt_decode` | JWT analysis: `alg=none`, HS/RS confusion, expiry, weak HS256 secret cracking |
 | `dns_enum` | A/AAAA/CNAME/MX/TXT/NS/SOA records + subdomain brute force |
+| `subdomains_crt` | Passive subdomain enumeration via crt.sh certificate-transparency logs |
+| `wayback_urls` | Historical endpoints/parameters for a domain from the Wayback Machine |
+| `tech_fingerprint` | Passive server/framework/CMS/WAF detection from headers, cookies, HTML |
+| `cors_audit` | CORS misconfiguration testing (reflected origin, null origin, credentials) |
+| `http_methods` | Allowed verbs + dangerous-method probing (TRACE/PUT/DELETE, XST) |
+| `graphql_introspect` | GraphQL introspection detection + query/mutation/type listing |
+| `recon_files` | Probes `.well-known`, robots/sitemap, `.git/HEAD`, `.env` and friends |
+| `redirect_chain` | Follows redirects and flags open-redirect to external hosts |
+| `hash_identify` | Classifies a captured hash (MD5/SHA/bcrypt/NTLM/JWT…) to guide cracking |
+| `proxy_status` | Shows whether traffic is tunneled through an intercepting proxy |
+
+**Burp Suite / ZAP:** the offensive HTTP tools tunnel through an intercepting proxy when you set `BURP_PROXY` (or `OX_PROXY` / `HTTP(S)_PROXY`), e.g. `BURP_PROXY=http://127.0.0.1:8080` — every request then shows up in Burp/ZAP to watch, log and replay. TLS verification is relaxed so the proxy's CA works. Run `proxy_status` to check.
 
 
 ## Swarm mode — the 3D agent office

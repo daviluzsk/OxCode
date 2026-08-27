@@ -6,6 +6,14 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Ten new offensive-security tools + intercepting-proxy support** (authorized
+  engagements only, pentest mode gated). Recon: `subdomains_crt` (crt.sh CT logs),
+  `wayback_urls` (historical endpoints/params), `tech_fingerprint`, `recon_files`
+  (`.well-known`, `.git/HEAD`, `.env`…). Web: `cors_audit`, `http_methods` (TRACE/
+  dangerous verbs), `graphql_introspect`, `redirect_chain` (open redirect). Plus
+  `hash_identify` and `proxy_status`. All HTTP runs through a dependency-free client
+  that tunnels through **Burp Suite / OWASP ZAP** when `BURP_PROXY` / `OX_PROXY` /
+  `HTTP(S)_PROXY` is set, so a tester can watch and replay every request.
 - **Click a worker to inspect it.** Clicking a worker opens a panel with an
   **Activity** tab — that agent's live transcript (tools it runs, messages it sends
   and receives, status changes, blackboard posts) — plus the **Wardrobe** tab and a
