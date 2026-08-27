@@ -271,7 +271,7 @@ description: Senior code review checklist
 
 `ox --pentest`, `"pentest": true` in settings, or `/pentest` to toggle mid-session. Adds an authorized-engagement methodology to the system prompt: scope/authorization check first, recon → enumeration → vulnerability analysis → minimal in-scope proof-of-concept → severity-rated report. **Use only on targets you are explicitly authorized to test.** The input bar shows `·pentest` while active.
 
-**Toolkit** (each tool refuses to run unless pentest mode is ON; all are approval-gated in `default` mode):
+**Toolkit** (each tool refuses to run unless pentest mode is ON). With pentest mode active the operator is treated as the authorized owner of the target, so the toolkit runs **without per-call approval prompts** — `plan` mode still blocks it, and turning pentest off restores normal gating:
 
 | Tool | What it does |
 |---|---|

@@ -29,12 +29,15 @@ interface PendingCheck {
 export class PermissionManager {
   private mode: PermissionMode;
   private approver: Approver;
+  /** Live check for whether pentest mode is active (reads config each call). */
+  private readonly isPentestActive: () => boolean;
   /** Session-scoped "allow similar" approvals (tool name or command prefix). */
   private readonly sessionApprovals = new Set<string>();
 
-  constructor(mode: PermissionMode, approver: Approver) {
+  constructor(mode: PermissionMode, approver: Approver, isPentestActive: () => boolean = () => false) {
     this.mode = mode;
     this.approver = approver;
+    this.isPentestActive = isPentestActive;
   }
 
   setMode(mode: PermissionMode): void {
@@ -59,6 +62,13 @@ export class PermissionManager {
         return { decision: 'deny', reason: 'Plan mode: no file mutations or command execution allowed.' , danger: false };
       }
       return { decision: 'allow', reason: 'read-only', danger: false };
+    }
+
+    // Pentest toolkit: with pentest mode on, the operator is the authorized
+    // owner of the target, so the security tools run without per-call prompts.
+    // (Plan mode above still blocks them; dangerouslySkip already allowed.)
+    if (tool.category === 'pentest' && this.isPentestActive()) {
+      return { decision: 'allow', reason: 'pentest mode: authorized toolkit', danger: false };
     }
 
     // askAll: every single tool call requires approval. "Allow similar this

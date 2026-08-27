@@ -59,7 +59,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
   const provider = createProvider(config);
   const todoStore = new TodoStore();
   const registry = createBuiltinRegistry(todoStore);
-  const permissions = new PermissionManager(config.permissionMode, opts.approver);
+  const permissions = new PermissionManager(config.permissionMode, opts.approver, () => config.pentest);
   const sessionStore = new SessionStore();
   const abort = new AbortController();
 

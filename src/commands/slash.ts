@@ -265,7 +265,7 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       const announce = (): void =>
         host.print(
           config.pentest
-            ? 'Pentest mode ON — security-testing methodology is now in the system prompt.\n⚠ Use only on targets you are explicitly authorized to test. The agent will ask for scope/authorization if it is not clear.'
+            ? 'Pentest mode ON — security-testing methodology is now in the system prompt, and the pentest toolkit runs without per-call approval prompts.\n⚠ Use only on targets you own or are explicitly authorized to test.'
             : 'Pentest mode OFF.',
         );
       const lc = arg.toLowerCase();

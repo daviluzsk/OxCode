@@ -38,6 +38,12 @@ export interface ToolDefinition<A = unknown> {
   /** read = side-effect free; write = mutates files; execute = runs processes. */
   readonly kind: ToolKind;
   readonly mutating: boolean;
+  /**
+   * Optional grouping. `'pentest'` marks the authorized security-testing
+   * toolkit: when pentest mode is active the operator is the target's owner,
+   * so these run without per-call approval prompts (except in `plan` mode).
+   */
+  readonly category?: 'pentest';
   /** One-line summary of a call for display (e.g. path or command). */
   summarize(args: A): string;
   execute(args: A, ctx: ToolContext): Promise<ToolResult>;

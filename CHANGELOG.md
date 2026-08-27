@@ -5,6 +5,15 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Changed
+- **Pentest mode no longer prompts for every action.** When pentest mode is ON the
+  operator is treated as the authorized owner of the target, so the security toolkit
+  (`net_scan`, `http_probe`, `web_fuzz`, `web_vuln_scan`, `http_request`, `form_brute`,
+  `jwt_*`, `dns_enum`, `ssl_audit`, `secrets_scan`, `pentest_payloads`) runs without
+  per-call approval prompts. `plan` mode still blocks it; turning pentest off restores
+  normal gating. The system prompt no longer tells the agent to stop and re-verify
+  authorization before acting.
+
 ### Fixed
 - **Markdown now renders in the terminal** — assistant replies no longer show raw
   `**bold**`, `*italic*`, `` `code` `` or `#` heading markers. A lightweight inline

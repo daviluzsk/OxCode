@@ -4,9 +4,19 @@ import { bashTool } from '../src/tools/bash.js';
 import { applyPatchTool } from '../src/tools/applyPatch.js';
 import { readFileTool } from '../src/tools/readFile.js';
 import { deletePathTool } from '../src/tools/fileOps.js';
+import type { ToolDefinition } from '../src/tools/types.js';
 
 const yes = async () => 'yes' as const;
 const no = async () => 'no' as const;
+
+// Minimal stand-in for a pentest toolkit tool (net_scan-like): mutating +
+// execute, tagged category 'pentest'. Only the fields classify() reads matter.
+const pentestTool = {
+  name: 'net_scan',
+  kind: 'execute',
+  mutating: true,
+  category: 'pentest',
+} as unknown as ToolDefinition;
 
 describe('PermissionManager', () => {
   it('default mode: read-only runs free, edits ask, dangerous asks with danger flag', () => {
@@ -78,6 +88,33 @@ describe('PermissionManager', () => {
     const second = await pm.check(applyPatchTool, { path: 'b', edits: [] }, 'edit b');
     expect(second.allowed).toBe(true);
     expect(askCount).toBe(1);
+  });
+
+  it('pentest tools run without asking when pentest mode is active', async () => {
+    let asked = false;
+    const pm = new PermissionManager(
+      'default',
+      async () => {
+        asked = true;
+        return 'no';
+      },
+      () => true,
+    );
+    const c = pm.classify(pentestTool, { target: 'example.com' });
+    expect(c.decision).toBe('allow');
+    const res = await pm.check(pentestTool, { target: 'example.com' }, 'scan example.com');
+    expect(res.allowed).toBe(true);
+    expect(asked).toBe(false);
+  });
+
+  it('pentest tools still ask when pentest mode is off', () => {
+    const pm = new PermissionManager('default', yes, () => false);
+    expect(pm.classify(pentestTool, { target: 'example.com' }).decision).toBe('ask');
+  });
+
+  it('plan mode still blocks pentest tools even when pentest is active', () => {
+    const pm = new PermissionManager('plan', yes, () => true);
+    expect(pm.classify(pentestTool, { target: 'example.com' }).decision).toBe('deny');
   });
 
   it('denied permission returns a reason', async () => {
