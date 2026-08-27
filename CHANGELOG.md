@@ -6,6 +6,20 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Kali-style offensive toolkit (10 tools).** `dir_bruteforce` (gobuster/dirb
+  content discovery), `vhost_scan`, `wpscan` (WordPress enum), `takeover_check`
+  (subdomain takeover fingerprints), `s3_check` (open buckets), `dns_axfr` (zone
+  transfer), `whois`, `hash_crack` (offline dictionary attack), `inject_probe`
+  (LFI / SSTI / command-injection detection PoC via a `FUZZ` marker), and
+  `favicon_hash` (Shodan mmh3 pivot). All bounded, rate-limited, detection/PoC-
+  level, pentest-mode gated, and routed through the shared HTTP client (so they
+  also tunnel through Burp/ZAP).
+
+### Fixed
+- The shared offensive HTTP client now decodes `Transfer-Encoding: chunked`
+  responses, so JSON endpoints (GraphQL, REST) parse correctly.
+
+### Added (continued)
 - **OxProxy — a built-in "Burp for the AI".** A web-security workbench the agent
   drives with tools instead of a GUI: `proxy_send` issues and captures a request
   (returns a `#id`), `proxy_history` / `proxy_view` browse the capture store,

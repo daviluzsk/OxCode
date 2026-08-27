@@ -290,6 +290,16 @@ description: Senior code review checklist
 | `redirect_chain` | Follows redirects and flags open-redirect to external hosts |
 | `hash_identify` | Classifies a captured hash (MD5/SHA/bcrypt/NTLM/JWT…) to guide cracking |
 | `proxy_status` | Shows whether traffic is tunneled through an intercepting proxy |
+| `dir_bruteforce` | Content discovery (gobuster/dirb) with a built-in common wordlist |
+| `vhost_scan` | Virtual-host discovery by fuzzing the Host header |
+| `wpscan` | WordPress version + user + exposed-file enumeration |
+| `takeover_check` | Subdomain-takeover fingerprints (GitHub Pages/S3/Heroku/…) |
+| `s3_check` | Open S3 bucket listing/read test |
+| `dns_axfr` | DNS zone-transfer (AXFR) attempt |
+| `whois` | WHOIS lookup via the WHOIS protocol (IANA referral) |
+| `hash_crack` | Offline dictionary attack (md5/sha1/sha256/sha512/NTLM) |
+| `inject_probe` | LFI / SSTI / command-injection detection PoC at a `FUZZ` marker |
+| `favicon_hash` | mmh3 favicon hash for Shodan/Censys pivoting |
 
 **OxProxy — a built-in Burp-style workbench the agent drives with tools** (no external app needed):
 

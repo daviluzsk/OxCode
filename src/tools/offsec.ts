@@ -101,7 +101,7 @@ export function rawHttp(
       const buf = Buffer.concat(chunks);
       const sep = buf.indexOf('\r\n\r\n');
       const head = (sep >= 0 ? buf.slice(0, sep) : buf).toString('latin1');
-      const bodyStr = sep >= 0 ? buf.slice(sep + 4).toString('utf8') : '';
+      let bodyBuf: Buffer = sep >= 0 ? Buffer.from(buf.subarray(sep + 4)) : Buffer.alloc(0);
       const lines = head.split('\r\n');
       const m = /^HTTP\/1\.[01]\s+(\d+)\s*(.*)$/.exec(lines[0] ?? '');
       const respHeaders: Record<string, string> = {};
@@ -109,6 +109,8 @@ export function rawHttp(
         const i = line.indexOf(':');
         if (i > 0) respHeaders[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
       }
+      if ((respHeaders['transfer-encoding'] ?? '').toLowerCase().includes('chunked')) bodyBuf = dechunk(bodyBuf);
+      const bodyStr = bodyBuf.toString('utf8');
       resolve({
         status: m ? Number(m[1]) : 0,
         statusText: m ? (m[2] ?? '') : '',
@@ -169,6 +171,22 @@ export function rawHttp(
 }
 
 const strip = (html: string) => html.replace(/<[^>]+>/g, ' ');
+
+/** Decode HTTP/1.1 chunked transfer-encoding into a single buffer. */
+function dechunk(buf: Buffer): Buffer {
+  const out: Uint8Array[] = [];
+  let pos = 0;
+  while (pos < buf.length) {
+    const nl = buf.indexOf('\r\n', pos);
+    if (nl < 0) break;
+    const size = parseInt(buf.subarray(pos, nl).toString('latin1').trim().split(';')[0] || '0', 16);
+    if (!Number.isFinite(size) || size <= 0) break;
+    const start = nl + 2;
+    out.push(buf.subarray(start, start + size));
+    pos = start + size + 2; // skip data + trailing CRLF
+  }
+  return out.length ? Buffer.concat(out) : buf;
+}
 
 export function createOffsecTools(config: ResolvedConfig): ToolDefinition[] {
   // --- recon: certificate-transparency subdomains ---
