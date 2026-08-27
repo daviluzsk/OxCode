@@ -5,6 +5,13 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Added
+- **Self-update.** On interactive startup OxCode checks its git remote and, if the
+  clone is behind, pulls the latest commit, reinstalls, rebuilds, and relaunches so
+  you always run the newest version. Also available on demand via `/update`; opt out
+  with `OX_NO_UPDATE=1`. Best-effort and offline-safe (skipped when it isn't a git
+  clone, has local changes, or has no network).
+
 ### Fixed
 - **No more infinite "Thinking…" hangs.** The model request had no timeout, so a
   provider connection that stalled (open socket, no bytes, no `[DONE]`) left the

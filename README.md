@@ -70,6 +70,13 @@ ox
 
 (Publishing to npm as `npm install -g oxcode` works the same way once published; the `ox` binary is registered by `package.json`.)
 
+### Updating
+
+OxCode **updates itself**. On interactive startup it checks the git remote, and if
+your clone is behind it pulls the latest commit, rebuilds, and relaunches — so you
+always run the newest version. You can also update on demand with `/update`, or opt
+out of the automatic check with `OX_NO_UPDATE=1`.
+
 ## API key setup
 
 OxCode never hardcodes keys and never stores them in session files.

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execa } from 'execa';
 import { parseArgs, HELP_TEXT, ArgParseError, type ParsedArgs } from './args.js';
 import { ConfigError } from '../config/loader.js';
 import { addMcpServer, loadMcpConfig, removeMcpServer } from '../mcp/config.js';
@@ -94,6 +95,37 @@ export async function main(argv: string[]): Promise<number> {
   };
 
   const headless = args.prompt !== undefined || args.promptFromStdin || !process.stdout.isTTY;
+
+  // Auto-update: on interactive startup, pull + rebuild if the clone is behind,
+  // then re-exec so the new code runs. Best-effort, offline-safe, opt-out via
+  // OX_NO_UPDATE=1. Skipped in headless and mock/test runs.
+  if (!headless && !process.env.OX_NO_UPDATE && process.env.OX_PROVIDER !== 'mock') {
+    try {
+      const { checkForUpdate, applyUpdate, isWorkingTreeClean } = await import('../updater.js');
+      const info = await checkForUpdate(cwd);
+      if (info && info.behind > 0) {
+        if (await isWorkingTreeClean(cwd)) {
+          process.stderr.write(`\n🔄 OxCode is ${info.behind} update(s) behind — updating to ${info.latest}…\n`);
+          const r = await applyUpdate(cwd, (l) => process.stderr.write(`   ${l}\n`));
+          if (r.ok) {
+            process.stderr.write('✅ Updated. Relaunching…\n\n');
+            const child = execa(process.execPath, [process.argv[1]!, ...argv], {
+              stdio: 'inherit',
+              reject: false,
+              env: { ...process.env, OX_NO_UPDATE: '1' },
+            });
+            const res = await child;
+            return res.exitCode ?? 0;
+          }
+          process.stderr.write(`⚠ Auto-update failed — continuing on the current version. Run /update later.\n\n`);
+        } else {
+          process.stderr.write(`\n🔄 ${info.behind} update(s) available — run /update (you have local changes).\n\n`);
+        }
+      }
+    } catch {
+      /* offline / not a clone / git missing — ignore */
+    }
+  }
 
   try {
     // Session continuation

@@ -90,6 +90,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'btw', description: 'Side question without interrupting the current run' },
   { name: 'swarm', description: 'Open the 3D swarm office visualization (/swarm off to stop)' },
   { name: 'paste', description: 'Save a clipboard image into the workspace to attach with @' },
+  { name: 'update', description: 'Update OxCode to the latest version (git pull + rebuild)' },
   { name: 'status', description: 'Show model, repository, permissions and session info' },
   { name: 'config', description: 'Show the resolved configuration' },
   { name: 'permissions', description: 'Pick the permission mode (/permissions opens a menu)' },
@@ -307,6 +308,18 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         return { kind: 'handled' };
       }
       host.btw(arg);
+      return { kind: 'handled' };
+    }
+
+    case 'update': {
+      const { checkForUpdate, applyUpdate } = await import('../updater.js');
+      host.print('Checking for updates…');
+      const info = await checkForUpdate(config.cwd);
+      if (!info) { host.print('Not a git clone or offline — cannot auto-update. Reinstall from https://github.com/daviluzsk/OxCode'); return { kind: 'handled' }; }
+      if (info.behind === 0) { host.print('Already up to date. ✅'); return { kind: 'handled' }; }
+      host.print(`${info.behind} update(s) available (latest ${info.latest}). Updating…`);
+      const r = await applyUpdate(config.cwd, (l) => host.print(`  ${l}`));
+      host.print(r.ok ? '✅ Updated. Restart OxCode to run the new version.' : `⚠ Update failed:\n${r.log}`);
       return { kind: 'handled' };
     }
 

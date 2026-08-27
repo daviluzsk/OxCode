@@ -3,3 +3,6 @@ dist/
 coverage/
 *.log
 .ox/settings.local.json
+
+# local installer scripts (never commit)
+*.bat
