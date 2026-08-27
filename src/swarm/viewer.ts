@@ -419,44 +419,41 @@ function loadOutfit(label, role){
 }
 function saveOutfit(label, o){ try { localStorage.setItem('ox-outfit:'+label, JSON.stringify(o)); } catch {} }
 
-// ---------- worker avatar ----------
+// ---------- worker avatar (blocky, floating head + hands, no arms) ----------
 function buildWorker(outfit){
   const g = new THREE.Group();
-  const shirtMat = M(outfit.shirt, { r: 0.7 });
-  const pantsMat = M(outfit.pants, { r: 0.8 });
-  const skinMat = M(outfit.skin, { r: 0.6 });
-  const hairMat = M(outfit.hair, { r: 0.7 });
+  const shirtMat = M(outfit.shirt, { r: 0.5, m: 0.1 });
+  const pantsMat = M(outfit.pants, { r: 0.7 });
+  const skinMat = M(outfit.skin, { r: 0.45 });
+  const hairMat = M(outfit.hair, { r: 0.6 });
 
-  const hips = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.3,0.34), pantsMat); hips.position.y=0.5; g.add(hips);
-  for (const lx of [-0.12,0.12]){
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.36,0.2), pantsMat);
-    thigh.position.set(lx,0.42,0.16); thigh.rotation.x=-1.2; thigh.castShadow=true; g.add(thigh);
-    const shin = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.4,0.16), pantsMat);
-    shin.position.set(lx,0.2,0.34); shin.castShadow=true; g.add(shin);
-    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,0.28), MAT.chair);
-    shoe.position.set(lx,0.05,0.42); g.add(shoe);
-  }
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.26,0.42,4,10), shirtMat);
-  torso.position.y=0.95; torso.castShadow=true; g.add(torso);
-  for (const ax of [-0.3,0.3]){
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09,0.42,4,8), shirtMat);
-    arm.position.set(ax,0.92,0.05); arm.rotation.x=-0.5; arm.castShadow=true; g.add(arm);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.1,10,10), skinMat);
-    hand.position.set(ax,0.72,0.3); g.add(hand);
-  }
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.12,8), skinMat); neck.position.y=1.28; g.add(neck);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26,18,18), skinMat); head.position.y=1.5; head.castShadow=true; g.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.28,18,18,0,Math.PI*2,0,Math.PI*0.62), hairMat);
-  hair.position.y=1.53; g.add(hair);
-  // accessories
-  const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.42,0.09,0.05), MAT.chair);
-  glasses.position.set(0,1.52,0.24); glasses.visible = !!outfit.glasses; g.add(glasses);
-  const hatG = new THREE.Group(); hatG.position.y=1.64; hatG.visible = !!outfit.hat;
-  const crown = new THREE.Mesh(new THREE.SphereGeometry(0.27,16,10,0,Math.PI*2,0,Math.PI*0.5), M(outfit.shirt,{r:0.6})); hatG.add(crown);
-  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.03,16), M(outfit.shirt,{r:0.6})); brim.position.set(0,0.02,0.16); brim.scale.z=0.7; hatG.add(brim);
-  g.add(hatG);
+  // legs block
+  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.52,0.5,0.42), pantsMat);
+  legs.position.y=0.32; legs.castShadow=true; g.add(legs);
+  // body cube (also the status glow)
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.64,0.66,0.46), shirtMat);
+  torso.position.y=0.94; torso.castShadow=true; g.add(torso);
 
-  g.userData.parts = { shirtMat, pantsMat, skinMat, hairMat, glasses, hatG, crown, brim, torso };
+  // floating head cube (clear gap above the body)
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.52,0.52,0.52), skinMat);
+  head.position.y=1.66; head.castShadow=true; head.userData.baseY=1.66; g.add(head);
+  // hair slab, glasses and cap ride the head (children -> hover together)
+  const hair = new THREE.Mesh(new THREE.BoxGeometry(0.56,0.16,0.56), hairMat);
+  hair.position.y=0.30; head.add(hair);
+  const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.46,0.1,0.05), MAT.chair);
+  glasses.position.set(0,0.03,0.27); glasses.visible = !!outfit.glasses; head.add(glasses);
+  const hatG = new THREE.Group(); hatG.position.y=0.30; hatG.visible = !!outfit.hat;
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.26,0.5), M(outfit.shirt,{r:0.6})); crown.position.y=0.13; hatG.add(crown);
+  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.66,0.05,0.3), M(outfit.shirt,{r:0.6})); brim.position.set(0,0.02,0.3); hatG.add(brim);
+  head.add(hatG);
+
+  // floating hands (little cubes, no arms), gap from the body
+  const handL = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.18,0.18), skinMat);
+  handL.position.set(-0.56,0.92,0.16); handL.castShadow=true; handL.userData.baseY=0.92; g.add(handL);
+  const handR = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.18,0.18), skinMat);
+  handR.position.set(0.56,0.92,0.16); handR.castShadow=true; handR.userData.baseY=0.92; g.add(handR);
+
+  g.userData.parts = { shirtMat, pantsMat, skinMat, hairMat, glasses, hatG, crown, brim, torso, head, handL, handR };
   return g;
 }
 function applyOutfit(worker, o){
@@ -610,7 +607,14 @@ function animate(){
     a.phase += dt*(1+a.intensity);
     const bob=Math.sin(a.phase*4)*0.02*a.intensity;
     a.root.position.y = bob;
-    const p=toScreen(a.root, 1.9);
+    // floating head + hands bob independently, and hands "type" while working
+    const pt=a.root.userData.parts;
+    pt.head.position.y = pt.head.userData.baseY + Math.sin(a.phase*2.5)*0.05;
+    pt.head.rotation.z = Math.sin(a.phase*1.7)*0.06;
+    const hb = 0.03 + 0.05*a.intensity;
+    pt.handL.position.y = pt.handL.userData.baseY + Math.sin(a.phase*6)*hb;
+    pt.handR.position.y = pt.handR.userData.baseY + Math.sin(a.phase*6+1.6)*hb;
+    const p=toScreen(a.root, 2.05);
     a.tag.style.left=p.x+'px'; a.tag.style.top=(p.y-6)+'px'; a.tag.style.display=p.vis?'block':'none';
     if(a.bubble){ if(now>a.bubbleUntil) a.bubble.style.opacity='0';
       const bp=toScreen(a.root,2.3); a.bubble.style.left=bp.x+'px'; a.bubble.style.top=(bp.y-8)+'px'; a.bubble.style.display=p.vis?'block':'none'; }
