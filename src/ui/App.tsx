@@ -50,6 +50,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
   const [elapsed, setElapsed] = useState(0);
   const [thinking, setThinking] = useState(''); // live reasoning stream (dim)
   const [mrRobot, setMrRobot] = useState(false); // fsociety theme active
+  const [staticGen, setStaticGen] = useState(0); // bump to remount <Static> (reprint header)
 
   const idRef = useRef(0);
   const runStartRef = useRef(0);
@@ -176,6 +177,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
         applyTheme(on ? 'mrrobot' : 'ox');
         setMrRobot(on);
         setHistory([]); // drop old scrollback; the header itself becomes the fsociety screen
+        setStaticGen((g) => g + 1); // remount <Static> so it reprints the new header
         clearScreen?.(); // wipe the terminal so the OxCode panel is gone, not just pushed up
       },
       loadSession: (s) => {
@@ -342,7 +344,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
 
   return (
     <Box flexDirection="column">
-      <Static items={[{ id: mrRobot ? 'header-mr' : 'header' }, ...history]}>
+      <Static key={staticGen} items={[{ id: mrRobot ? 'header-mr' : 'header' }, ...history]}>
         {(item) =>
           item.id.startsWith('header') ? (
             <Header
