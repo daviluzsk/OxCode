@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols, brand, mrrobotArt } from '../theme.js';
+import { colors, symbols, brand, mrrobotArt, GLITCH_ROWS } from '../theme.js';
 import { VERSION } from '../../version.js';
 
 export interface HeaderProps {
@@ -22,61 +22,37 @@ const TIPS: Array<{ cmd: string; desc: string }> = [
   { cmd: '/swarm', desc: '3D agent office' },
 ];
 
-/** The fsociety "boot" screen — shown in place of the normal header in Mr Robot mode. */
+/** The fsociety "boot" screen — giant glitch banner, no frame (Mr Robot mode). */
 function MrRobotScreen(): React.JSX.Element {
   const red = colors.accent; // redBright while the mrrobot theme is applied
   const time = new Date().toISOString().slice(11, 19);
   const art = mrrobotArt();
-  const rule = '─'.repeat(64);
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={red} paddingX={2} paddingY={1}>
-      {/* prompt bar */}
+    <Box flexDirection="column" marginTop={1}>
       <Box justifyContent="space-between">
-        <Text>
-          <Text color={red}>┌─[</Text>
-          <Text color="greenBright" bold>root</Text>
-          <Text color={red}>@</Text>
-          <Text color="redBright" bold>fsociety</Text>
-          <Text color={red}>]─[</Text>
-          <Text color="cyanBright">~</Text>
-          <Text color={red}>]# connect --secure</Text>
-        </Text>
-        <Text color={red} dimColor>
-          [ UTC {time} ]
-        </Text>
+        <Text color={red} dimColor>root@fsociety:~$ ./fsociety.dat --run</Text>
+        <Text color={red} dimColor>[ {time} UTC ]</Text>
       </Box>
-      <Text color={red} dimColor>{rule}</Text>
-
-      {/* boot log */}
-      <Text color={red} dimColor>[+] Establishing encrypted channel to 192.168.0.2:22 …</Text>
-      <Text color={red} dimColor>[+] Handshake OK · cipher aes-256-gcm · key exchange x25519</Text>
-      <Text color={red} dimColor>[+] Authentication required</Text>
-      <Text color={red}>
-        Password: <Text bold>████████████████</Text>
-      </Text>
-
-      {/* banner */}
+      <Text color={red} dimColor>{GLITCH_ROWS[0]}</Text>
       <Text> </Text>
+      {/* giant MR / ROBOT — a couple of rows flicker dim for a glitch feel */}
       {art.map((l, i) => (
-        <Text key={i} color="redBright" bold wrap="truncate-end">
+        <Text key={i} color="redBright" bold dimColor={i === 3 || i === 8} wrap="truncate-end">
           {l}
         </Text>
       ))}
-      <Box justifyContent="space-between">
-        <Text color={red} dimColor>fsociety // control is an illusion</Text>
-        <Text color={red}>[ fsociety.dat ]</Text>
-      </Box>
-
-      {/* success */}
       <Text> </Text>
-      <Text color="greenBright">[✓] Login successful.</Text>
-      <Text color="greenBright">[✓] System boot sequence complete.</Text>
-      <Text color="greenBright">[✓] Welcome, friend.</Text>
-      <Text color={red} dimColor>{rule}</Text>
-      <Text>
-        <Text color={red}>└─$ </Text>
-        <Text color={red} inverse>{' '}</Text>
-      </Text>
+      <Text color={red} dimColor>{GLITCH_ROWS[1]}</Text>
+      <Box justifyContent="space-between" marginTop={1}>
+        <Text>
+          <Text color={red}>~ </Text>
+          <Text color="redBright" bold>fsociety</Text>
+          <Text color={red}> ~ control is an illusion ~ </Text>
+          <Text color="greenBright">hello, friend</Text>
+          <Text color={red}> ~</Text>
+        </Text>
+        <Text color={red} dimColor>[fsociety.dat]</Text>
+      </Box>
     </Box>
   );
 }
