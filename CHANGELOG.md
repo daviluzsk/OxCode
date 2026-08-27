@@ -6,6 +6,10 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **`/mrrobot` — fsociety mode.** One command flips on pentest mode *and* repaints
+  the UI into a red "Mr Robot" hacker theme: the brand becomes **Mr Robot**, the ox
+  mascot becomes an fsociety mask, the accent turns red, and a banner drops in.
+  Run it again to switch back to OxCode.
 - **Self-update.** On interactive startup OxCode checks its git remote and, if the
   clone is behind, pulls the latest commit, reinstalls, rebuilds, and relaunches so
   you always run the newest version. Also available on demand via `/update`; opt out

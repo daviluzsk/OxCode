@@ -30,6 +30,7 @@ function makeDeps(pick: (spec: ChoiceSpec) => string | null): {
     setModel: () => {},
     pickSession: async () => null,
     pickModel: async () => null,
+    setMrRobot: () => {},
     pickChoice: async (spec) => {
       specs.push(spec);
       return pick(spec);

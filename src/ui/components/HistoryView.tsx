@@ -11,7 +11,8 @@ export type HistoryEntry =
   | { id: string; kind: 'tool'; tool: ToolEntry }
   | { id: string; kind: 'info'; text: string }
   | { id: string; kind: 'error'; text: string }
-  | { id: string; kind: 'summary'; files: number; added: number; removed: number; durationMs?: number };
+  | { id: string; kind: 'summary'; files: number; added: number; removed: number; durationMs?: number }
+  | { id: string; kind: 'banner'; lines: string[] };
 
 export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Element | null {
   switch (entry.kind) {
@@ -27,6 +28,16 @@ export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Eleme
       return (
         <Box flexDirection="column" marginTop={1} marginLeft={1}>
           <Markdown text={entry.text} />
+        </Box>
+      );
+    case 'banner':
+      return (
+        <Box flexDirection="column" marginTop={1} marginLeft={1} borderStyle="round" borderColor={colors.accent} paddingX={2}>
+          {entry.lines.map((l, i) => (
+            <Text key={i} color={colors.accent} bold>
+              {l}
+            </Text>
+          ))}
         </Box>
       );
     case 'tool':

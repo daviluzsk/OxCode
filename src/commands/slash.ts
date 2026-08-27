@@ -30,6 +30,8 @@ export interface CommandHost {
   pickModel(current: string): Promise<string | null>;
   /** Show a generic single-choice picker; returns the chosen id or null (cancelled). */
   pickChoice(spec: ChoiceSpec): Promise<string | null>;
+  /** Toggle the red "Mr Robot" / fsociety theme in the UI. */
+  setMrRobot(on: boolean): void;
   /** Replace the active session (used by /resume and --continue). */
   loadSession(session: Session): void;
   /** Fire a side question (/btw) without touching the main conversation. */
@@ -87,6 +89,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'system', description: 'Set a custom instruction the agent always follows (/system <text>|off|--save)' },
   { name: 'skills', description: 'List installed skills (.ox/skills)' },
   { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
+  { name: 'mrrobot', description: 'fsociety mode: pentest + red "Mr Robot" hacker theme' },
   { name: 'btw', description: 'Side question without interrupting the current run' },
   { name: 'swarm', description: 'Open the 3D swarm office visualization (/swarm off to stop)' },
   { name: 'paste', description: 'Save a clipboard image into the workspace to attach with @' },
@@ -308,6 +311,18 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         return { kind: 'handled' };
       }
       host.btw(arg);
+      return { kind: 'handled' };
+    }
+
+    case 'mrrobot': {
+      const on = !config.pentest; // fsociety mode rides on pentest mode
+      config.pentest = on;
+      host.setMrRobot(on);
+      host.print(
+        on
+          ? "Hello, friend. fsociety mode engaged — red team is live (pentest on).\n⚠ Only touch targets you're authorized to test."
+          : 'fsociety mode disengaged. Pentest off.',
+      );
       return { kind: 'handled' };
     }
 

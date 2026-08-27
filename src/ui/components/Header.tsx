@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols, MASCOT } from '../theme.js';
+import { colors, symbols, brand } from '../theme.js';
 import { VERSION } from '../../version.js';
 
 export interface HeaderProps {
@@ -30,7 +30,7 @@ export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode 
         {/* mascot + title row */}
         <Box flexDirection="row">
           <Box flexDirection="column" marginRight={2}>
-            {MASCOT.map((line, i) => (
+            {brand.mascot.map((line, i) => (
               <Text key={i} color={colors.accent} bold>
                 {line}
               </Text>
@@ -39,11 +39,11 @@ export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode 
           <Box flexDirection="column">
             <Text>
               <Text bold color={colors.accent}>
-                OxCode
+                {brand.name}
               </Text>
               <Text dimColor>{`  v${VERSION}`}</Text>
             </Text>
-            <Text dimColor>Nemotron-powered coding agent — and offensive-security workbench</Text>
+            <Text dimColor>{brand.tagline}</Text>
             <Text>
               <Text dimColor>{symbols.arrow} </Text>
               <Text color={colors.toolName}>{model}</Text>

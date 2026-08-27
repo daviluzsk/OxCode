@@ -8,7 +8,7 @@ import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
 import { loadInputHistory, saveInputHistory } from './inputHistory.js';
-import { colors, symbols, MASCOT_MINI } from './theme.js';
+import { colors, symbols, brand, applyTheme, FSOCIETY_BANNER } from './theme.js';
 import { resolveAttachments } from './attachments.js';
 import { Header } from './components/Header.js';
 import { HistoryView, type HistoryEntry } from './components/HistoryView.js';
@@ -48,6 +48,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   const [spinnerFrame, setSpinnerFrame] = useState(0);
   const [exitHint, setExitHint] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [, setMrRobot] = useState(false); // forces a repaint when the theme flips
 
   const idRef = useRef(0);
   const runStartRef = useRef(0);
@@ -165,6 +166,12 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
           choiceResolveRef.current = resolve;
           setChoice(spec);
         }),
+      setMrRobot: (on) => {
+        applyTheme(on ? 'mrrobot' : 'ox');
+        setMrRobot(on);
+        if (on) pushEntry({ id: nextId(), kind: 'banner', lines: FSOCIETY_BANNER });
+        else pushInfo('fsociety mode off — back to OxCode.');
+      },
       loadSession: (s) => {
         runtime.replaceSession(s);
         changedRef.current = { files: new Set(), added: 0, removed: 0 };
@@ -360,7 +367,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       {busy ? (
         <Box marginLeft={1} marginTop={activeTools.length === 0 && !streaming ? 1 : 0}>
           <Text color={colors.accent}>
-            <Text dimColor>{MASCOT_MINI} </Text>
+            <Text dimColor>{brand.mascotMini} </Text>
             {SPINNER[spinnerFrame]} {streaming ? '' : 'Thinking… '}
             <Text dimColor>
               {formatDuration(elapsed)}

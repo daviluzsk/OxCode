@@ -26,6 +26,7 @@ function makeDeps(host: Partial<CommandHost> & Pick<CommandHost, 'btw'>): { deps
       pickSession: async () => null,
       pickModel: async () => null,
       pickChoice: async () => null,
+      setMrRobot: () => {},
       loadSession: () => {},
       ...host,
     },
