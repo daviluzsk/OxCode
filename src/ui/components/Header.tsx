@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols } from '../theme.js';
+import { colors, symbols, MASCOT } from '../theme.js';
 import { VERSION } from '../../version.js';
 
 export interface HeaderProps {
@@ -12,11 +12,13 @@ export interface HeaderProps {
   dangerMode: boolean;
 }
 
-const SHORTCUTS: Array<{ cmd: string; desc: string }> = [
-  { cmd: '/resume', desc: 'resume a session' },
-  { cmd: '/init', desc: 'create OX.md' },
+const TIPS: Array<{ cmd: string; desc: string }> = [
   { cmd: '/help', desc: 'all commands' },
-  { cmd: '/doctor', desc: 'check setup' },
+  { cmd: '@file', desc: 'attach a file or image' },
+  { cmd: '/init', desc: 'analyze repo → OX.md' },
+  { cmd: '/resume', desc: 'past sessions' },
+  { cmd: '/pentest', desc: 'security testing' },
+  { cmd: '/swarm', desc: '3D agent office' },
 ];
 
 export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode }: HeaderProps): React.JSX.Element {
@@ -24,46 +26,59 @@ export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode 
   const shownCwd = home && cwd.startsWith(home) ? '~' + cwd.slice(home.length) : cwd;
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text dimColor>{shownCwd}</Text>
-      <Box borderStyle="round" borderColor={colors.accent} paddingX={2} marginTop={1} flexDirection="column">
-        <Text>
-          <Text bold color={colors.accent}>
-            OxCode
-          </Text>
-          <Text dimColor>{'  '}{VERSION}</Text>
-        </Text>
-        <Text> </Text>
-        <Text>
-          <Text bold>Ox Alpha coding agent</Text>
-          <Text dimColor>{` ${symbols.bullet} ${model} (${provider})`}</Text>
-        </Text>
-        <Text dimColor>
-          {fileCount === null ? '3000+ files' : `${fileCount} files`}
-          {gitBranch ? ` ${symbols.bullet} git: ${gitBranch}` : ''}
-        </Text>
-        <Text> </Text>
-        <Box flexDirection="row" justifyContent="space-between">
-          <Box flexDirection="column">
-            {SHORTCUTS.slice(0, 2).map((s) => (
-              <Text key={s.cmd}>
-                <Text color={colors.accent}>{s.cmd}</Text>
-                <Text dimColor>{`  ${s.desc}`}</Text>
+      <Box borderStyle="round" borderColor={colors.accent} paddingX={2} paddingY={1} flexDirection="column">
+        {/* mascot + title row */}
+        <Box flexDirection="row">
+          <Box flexDirection="column" marginRight={2}>
+            {MASCOT.map((line, i) => (
+              <Text key={i} color={colors.accent} bold>
+                {line}
               </Text>
             ))}
           </Box>
           <Box flexDirection="column">
-            {SHORTCUTS.slice(2).map((s) => (
-              <Text key={s.cmd}>
-                <Text color={colors.accent}>{s.cmd}</Text>
-                <Text dimColor>{`  ${s.desc}`}</Text>
+            <Text>
+              <Text bold color={colors.accent}>
+                OxCode
               </Text>
-            ))}
+              <Text dimColor>{`  v${VERSION}`}</Text>
+            </Text>
+            <Text dimColor>Ox Alpha coding agent — and offensive-security workbench</Text>
+            <Text>
+              <Text dimColor>{symbols.arrow} </Text>
+              <Text color={colors.toolName}>{model}</Text>
+              <Text dimColor>{` (${provider})`}</Text>
+            </Text>
           </Box>
         </Box>
+
+        <Text> </Text>
+        <Text dimColor>
+          {symbols.bullet} {shownCwd}
+        </Text>
+        <Text dimColor>
+          {symbols.bullet} {fileCount === null ? '3000+ files' : `${fileCount} files`}
+          {gitBranch ? `  ${symbols.bullet} git: ${gitBranch}` : ''}
+        </Text>
+
+        <Text> </Text>
+        <Box flexDirection="row">
+          {[0, 3].map((start) => (
+            <Box key={start} flexDirection="column" marginRight={4}>
+              {TIPS.slice(start, start + 3).map((t) => (
+                <Text key={t.cmd}>
+                  <Text color={colors.accent}>{t.cmd.padEnd(9)}</Text>
+                  <Text dimColor>{t.desc}</Text>
+                </Text>
+              ))}
+            </Box>
+          ))}
+        </Box>
+
         {dangerMode ? (
           <>
             <Text> </Text>
-            <Text color={colors.warning} bold>
+            <Text color={colors.error} bold>
               {symbols.warning} dangerouslySkipPermissions — every tool runs without asking
             </Text>
           </>

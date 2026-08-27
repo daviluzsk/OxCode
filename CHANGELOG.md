@@ -6,6 +6,15 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Refreshed welcome header + mascot.** The startup banner now leads with Oxxy,
+  the OxCode ox mascot (`^__^ (oo) (__)`), a cleaner title/model/repo layout, and
+  a two-column tips grid — closer to a modern agent CLI. The mascot also peeks out
+  of the "thinking" indicator.
+- **Easier image input.** Images can be attached with `@path` from anywhere on
+  disk (not just the workspace) — handy for screenshots in `~/Pictures` — while
+  non-image files still stay workspace-scoped. New `/paste` command grabs an image
+  straight off the clipboard (Windows/macOS/Linux), saves it under `.ox/pastes/`,
+  and tells you how to attach it.
 - **Run the REAL tools.** `security_tools` lists the genuine offensive binaries
   installed on the machine and `run_security_tool` launches them with your
   arguments and returns their output — nmap, sqlmap, nikto, gobuster/ffuf,

@@ -20,6 +20,13 @@ export const symbols = {
   boxV: ascii ? '|' : '│',
 };
 
+/**
+ * OxCode mascot — a little ox ("Oxxy"). Pure ASCII so it renders in any
+ * terminal. Two lines: horns/ears over an eyed face with a snout.
+ */
+export const MASCOT = ['^__^ ', '(oo) ', '(__) '];
+export const MASCOT_MINI = '(oo)';
+
 export const colors = {
   accent: 'cyan',
   dim: 'gray',

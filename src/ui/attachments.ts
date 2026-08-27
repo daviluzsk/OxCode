@@ -49,7 +49,11 @@ export function resolveAttachments(cwd: string, input: string): AttachmentResult
     }
     const raw = token.slice(1);
     const absolute = resolveInCwd(cwd, raw);
-    if (!isInsideRoot(cwd, absolute)) {
+    const ext0 = path.extname(absolute).toLowerCase();
+    const isImage = IMAGE_EXTS.has(ext0);
+    // Images may be attached from anywhere (screenshots live in ~/Pictures etc.);
+    // other files must stay inside the workspace root.
+    if (!isInsideRoot(cwd, absolute) && !isImage) {
       notes.push(`Skipped ${token}: outside the workspace.`);
       continue;
     }

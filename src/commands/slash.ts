@@ -13,6 +13,7 @@ import { isGitRepo } from '../tools/git.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { SwarmController } from '../swarm/controller.js';
 import { openInBrowser } from '../utils/openBrowser.js';
+import { pasteClipboardImage } from '../utils/clipboard.js';
 import { maskKey } from '../utils/redact.js';
 import { estimateTokens } from '../utils/truncate.js';
 import { expandCustomCommand, loadCustomCommands } from './custom.js';
@@ -88,6 +89,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
   { name: 'btw', description: 'Side question without interrupting the current run' },
   { name: 'swarm', description: 'Open the 3D swarm office visualization (/swarm off to stop)' },
+  { name: 'paste', description: 'Save a clipboard image into the workspace to attach with @' },
   { name: 'status', description: 'Show model, repository, permissions and session info' },
   { name: 'config', description: 'Show the resolved configuration' },
   { name: 'permissions', description: 'Pick the permission mode (/permissions opens a menu)' },
@@ -305,6 +307,16 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         return { kind: 'handled' };
       }
       host.btw(arg);
+      return { kind: 'handled' };
+    }
+
+    case 'paste': {
+      try {
+        const rel = await pasteClipboardImage(config.cwd);
+        host.print(`🖼  Saved clipboard image → ${rel}\nAttach it in your next message, e.g.  @${rel} what does this show?`);
+      } catch (e) {
+        host.print(`No image pasted: ${(e as Error).message}`);
+      }
       return { kind: 'handled' };
     }
 

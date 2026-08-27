@@ -8,7 +8,7 @@ import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
 import { loadInputHistory, saveInputHistory } from './inputHistory.js';
-import { colors, symbols } from './theme.js';
+import { colors, symbols, MASCOT_MINI } from './theme.js';
 import { resolveAttachments } from './attachments.js';
 import { Header } from './components/Header.js';
 import { HistoryView, type HistoryEntry } from './components/HistoryView.js';
@@ -360,6 +360,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       {busy ? (
         <Box marginLeft={1} marginTop={activeTools.length === 0 && !streaming ? 1 : 0}>
           <Text color={colors.accent}>
+            <Text dimColor>{MASCOT_MINI} </Text>
             {SPINNER[spinnerFrame]} {streaming ? '' : 'Thinking… '}
             <Text dimColor>
               {formatDuration(elapsed)}
