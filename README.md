@@ -307,10 +307,15 @@ What you see in the office:
 - **Workers** spawn at desks, colored by role (explorer, coder, tester, reviewer, security).
 - They **light up green while working**, show **speech bubbles** for messages, and animate while running tools.
 - **Blue arcs** fly between desks when agents hand off or share a result.
-- A **central blackboard** collects each agent's findings — the hive's shared memory. New
+- A **blackboard** collects each agent's findings — the hive's shared memory. New
   agents are given the blackboard so far, so later workers build on what earlier ones found
-  instead of repeating it. An **orchestrator** worker in the middle delegates and receives reports.
+  instead of repeating it. An **orchestrator** worker delegates and receives reports.
 - Side panels stream the **live activity log** and the **blackboard** in text.
+
+It's a real floor-plan office — reception with a WELCOME sign, lounge, private offices,
+a glass meeting room, kitchen, bathrooms, desk pods and plants — and the workers are
+dressable: **click any worker to open a wardrobe** (shirt, pants, hair, skin, glasses, cap).
+Outfits are saved per worker in your browser.
 
 How it works: a tiny built-in HTTP server (no dependencies) streams agent events over
 **Server-Sent Events** to a self-contained [Three.js](https://threejs.org) page. Nothing

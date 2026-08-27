@@ -13,6 +13,12 @@ All notable changes to OxCode are documented here. Format loosely follows
   exchanging hand-off arcs, and posting findings to a shared **blackboard** (hive
   memory) that later agents build on. An orchestrator worker delegates and collects
   reports. No runtime dependencies; the viewer loads Three.js from a CDN.
+- **Realistic office + customizable workers.** The swarm viewer is now a proper
+  floor-plan office — reception with a WELCOME sign, lounge, private offices,
+  a glass-walled meeting room, kitchen, bathrooms, desk pods with dividers, and
+  plants. Workers are articulated characters (shirt, pants, hair, skin, optional
+  glasses/cap) seated at desks; **click any worker to open a wardrobe** and change
+  their outfit — saved per worker in the browser.
 
 ### Changed
 - **Pentest mode no longer prompts for every action.** When pentest mode is ON the
