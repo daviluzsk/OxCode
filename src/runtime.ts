@@ -18,6 +18,7 @@ import { createBuiltinRegistry } from './tools/index.js';
 import { createPentestTools } from './tools/pentest.js';
 import { createPentestProTools } from './tools/pentestPro.js';
 import { createOffsecTools } from './tools/offsec.js';
+import { createOxProxyTools } from './tools/oxproxy.js';
 import { ToolRegistry } from './tools/registry.js';
 import { SwarmController } from './swarm/controller.js';
 
@@ -92,6 +93,9 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
     registry.register(tool);
   }
   for (const tool of createOffsecTools(config)) {
+    registry.register(tool);
+  }
+  for (const tool of createOxProxyTools(config)) {
     registry.register(tool);
   }
 

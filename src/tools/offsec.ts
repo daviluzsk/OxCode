@@ -27,7 +27,7 @@ function gate(config: ResolvedConfig): ToolResult | null {
 }
 const MAX_OUTPUT = 20_000;
 
-function activeProxy(): string {
+export function activeProxy(): string {
   return (
     process.env.OX_PROXY ||
     process.env.BURP_PROXY ||
@@ -39,7 +39,7 @@ function activeProxy(): string {
   );
 }
 
-interface RawResponse {
+export interface RawResponse {
   status: number;
   statusText: string;
   headers: Record<string, string>;
@@ -53,7 +53,8 @@ interface RawResponse {
  * chunked/gzip handling. Tunnels through an intercepting proxy via CONNECT when
  * one is configured (TLS verification is relaxed then, since Burp/ZAP re-sign).
  */
-function rawHttp(
+export interface RawHttpResponse extends RawResponse {}
+export function rawHttp(
   method: string,
   urlStr: string,
   opts: { headers?: Record<string, string>; body?: string; timeout?: number } = {},

@@ -291,7 +291,21 @@ description: Senior code review checklist
 | `hash_identify` | Classifies a captured hash (MD5/SHA/bcrypt/NTLM/JWT…) to guide cracking |
 | `proxy_status` | Shows whether traffic is tunneled through an intercepting proxy |
 
-**Burp Suite / ZAP:** the offensive HTTP tools tunnel through an intercepting proxy when you set `BURP_PROXY` (or `OX_PROXY` / `HTTP(S)_PROXY`), e.g. `BURP_PROXY=http://127.0.0.1:8080` — every request then shows up in Burp/ZAP to watch, log and replay. TLS verification is relaxed so the proxy's CA works. Run `proxy_status` to check.
+**OxProxy — a built-in Burp-style workbench the agent drives with tools** (no external app needed):
+
+| Tool | Burp analog | What it does |
+|---|---|---|
+| `proxy_send` | Proxy | Issue an HTTP request and capture it in history (returns a `#id`) |
+| `proxy_history` / `proxy_view` | HTTP history | List captures / show one full request+response |
+| `proxy_repeat` | Repeater | Resend a captured request with tweaked method/headers/body |
+| `proxy_intruder` | Intruder | Replace a `FUZZ` marker across payloads/wordlist; clustered anomaly report |
+| `proxy_compare` | Comparer | Line-level diff of two captured responses |
+| `proxy_decode` | Decoder | base64 / base64url / url / hex / html / jwt encode & decode |
+| `proxy_clear` | — | Clear the capture store |
+
+Typical loop: `proxy_send` → `proxy_view` → `proxy_repeat` / `proxy_intruder` → `proxy_compare`.
+
+**Burp Suite / ZAP:** OxProxy and the offensive HTTP tools also tunnel through an external intercepting proxy when you set `BURP_PROXY` (or `OX_PROXY` / `HTTP(S)_PROXY`), e.g. `BURP_PROXY=http://127.0.0.1:8080` — every request then also shows up in Burp/ZAP to watch, log and replay. TLS verification is relaxed so the proxy's CA works. Run `proxy_status` to check.
 
 
 ## Swarm mode — the 3D agent office

@@ -6,6 +6,16 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **OxProxy — a built-in "Burp for the AI".** A web-security workbench the agent
+  drives with tools instead of a GUI: `proxy_send` issues and captures a request
+  (returns a `#id`), `proxy_history` / `proxy_view` browse the capture store,
+  `proxy_repeat` is Repeater (resend a captured request with tweaked method/
+  headers/body — IDOR, authz tampering), `proxy_intruder` is Intruder (replace a
+  `FUZZ` marker across a payload list/wordlist, rate-limited and bounded, with a
+  clustered anomaly report), `proxy_compare` is Comparer (line-level response
+  diff), and `proxy_decode` is Decoder (base64/base64url/url/hex/html/jwt). It
+  reuses the dependency-free HTTP client, so it also tunnels through Burp/ZAP when
+  a proxy is set. Pentest-mode gated. Covered by local-server integration tests.
 - **Ten new offensive-security tools + intercepting-proxy support** (authorized
   engagements only, pentest mode gated). Recon: `subdomains_crt` (crt.sh CT logs),
   `wayback_urls` (historical endpoints/params), `tech_fingerprint`, `recon_files`
