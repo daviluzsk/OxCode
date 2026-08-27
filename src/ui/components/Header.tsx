@@ -27,44 +27,56 @@ function MrRobotScreen(): React.JSX.Element {
   const red = colors.accent; // redBright while the mrrobot theme is applied
   const time = new Date().toISOString().slice(11, 19);
   const art = mrrobotArt();
+  const rule = '─'.repeat(64);
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={red} paddingX={2} paddingY={1}>
+      {/* prompt bar */}
       <Box justifyContent="space-between">
         <Text>
-          <Text color={red}>[</Text>
-          <Text color="green">root</Text>
-          <Text color={red}>@fsociety</Text>
-          <Text color={red}> ~]# connect --secure</Text>
+          <Text color={red}>┌─[</Text>
+          <Text color="greenBright" bold>root</Text>
+          <Text color={red}>@</Text>
+          <Text color="redBright" bold>fsociety</Text>
+          <Text color={red}>]─[</Text>
+          <Text color="cyanBright">~</Text>
+          <Text color={red}>]# connect --secure</Text>
         </Text>
         <Text color={red} dimColor>
-          [UTC] {time}
+          [ UTC {time} ]
         </Text>
       </Box>
-      <Text color={red}>[+] Establishing encrypted channel to 192.168.0.2:22 ...</Text>
-      <Text color={red}>[+] Authentication required</Text>
-      <Text color={red}>Password: ****************</Text>
+      <Text color={red} dimColor>{rule}</Text>
+
+      {/* boot log */}
+      <Text color={red} dimColor>[+] Establishing encrypted channel to 192.168.0.2:22 …</Text>
+      <Text color={red} dimColor>[+] Handshake OK · cipher aes-256-gcm · key exchange x25519</Text>
+      <Text color={red} dimColor>[+] Authentication required</Text>
+      <Text color={red}>
+        Password: <Text bold>████████████████</Text>
+      </Text>
+
+      {/* banner */}
       <Text> </Text>
       {art.map((l, i) => (
-        <Text key={i} color={red} bold wrap="truncate-end">
+        <Text key={i} color="redBright" bold wrap="truncate-end">
           {l}
         </Text>
       ))}
-      <Text> </Text>
-      <Text color="green">[+] Login successful.</Text>
-      <Text color="green">[+] System boot sequence complete.</Text>
-      <Text color="green">[+] Welcome, friend.</Text>
-      <Text> </Text>
       <Box justifyContent="space-between">
-        <Text>
-          <Text color={red}>[</Text>
-          <Text color="green">root</Text>
-          <Text color={red}>@fsociety ~]# </Text>
-          <Text color={red} inverse>
-            {' '}
-          </Text>
-        </Text>
-        <Text color={red}>[fsociety.dat]</Text>
+        <Text color={red} dimColor>fsociety // control is an illusion</Text>
+        <Text color={red}>[ fsociety.dat ]</Text>
       </Box>
+
+      {/* success */}
+      <Text> </Text>
+      <Text color="greenBright">[✓] Login successful.</Text>
+      <Text color="greenBright">[✓] System boot sequence complete.</Text>
+      <Text color="greenBright">[✓] Welcome, friend.</Text>
+      <Text color={red} dimColor>{rule}</Text>
+      <Text>
+        <Text color={red}>└─$ </Text>
+        <Text color={red} inverse>{' '}</Text>
+      </Text>
     </Box>
   );
 }
