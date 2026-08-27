@@ -282,6 +282,43 @@ description: Senior code review checklist
 | `dns_enum` | A/AAAA/CNAME/MX/TXT/NS/SOA records + subdomain brute force |
 
 
+## Swarm mode — the 3D agent office
+
+OxCode can already split a large job across parallel subagents (the `task` tool runs
+several at once). **Swarm mode** turns that into something you can *watch*: a live 3D
+office in your browser where each subagent is a worker at a desk.
+
+```bash
+ox --swarm            # start with the office open
+# …or toggle it any time inside the TUI:
+> /swarm              # opens http://localhost:4517 in your browser
+> /swarm off          # stop the viewer
+```
+
+Then ask for something big and let it fan out:
+
+```text
+> Split this across parallel agents: one maps the backend, one maps the frontend,
+  one fixes the failing tests. Coordinate through the shared blackboard.
+```
+
+What you see in the office:
+
+- **Workers** spawn at desks, colored by role (explorer, coder, tester, reviewer, security).
+- They **light up green while working**, show **speech bubbles** for messages, and animate while running tools.
+- **Blue arcs** fly between desks when agents hand off or share a result.
+- A **central blackboard** collects each agent's findings — the hive's shared memory. New
+  agents are given the blackboard so far, so later workers build on what earlier ones found
+  instead of repeating it. An **orchestrator** worker in the middle delegates and receives reports.
+- Side panels stream the **live activity log** and the **blackboard** in text.
+
+How it works: a tiny built-in HTTP server (no dependencies) streams agent events over
+**Server-Sent Events** to a self-contained [Three.js](https://threejs.org) page. Nothing
+leaves your machine — it binds to `127.0.0.1` and picks a free port if `4517` is taken.
+The 3D page loads Three.js from a CDN, so the *viewer* needs internet the first time (the
+agents themselves do not). If port `4517` is busy the server moves to a random free port and
+prints the URL.
+
 ## Configuration
 
 Precedence: **CLI arguments → project config → user config → environment → defaults**.

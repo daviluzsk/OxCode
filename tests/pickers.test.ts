@@ -7,6 +7,7 @@ import { defaultConfig, type ResolvedConfig } from '../src/config/types.js';
 import { PermissionManager } from '../src/permissions/manager.js';
 import { Session, SessionStore } from '../src/sessions/store.js';
 import { ToolRegistry } from '../src/tools/registry.js';
+import { SwarmController } from '../src/swarm/controller.js';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ox-pick-'));
 
@@ -49,6 +50,7 @@ function makeDeps(pick: (spec: ChoiceSpec) => string | null): {
     mcp: null,
     profile: null,
     skills: [],
+    swarm: new SwarmController(),
   };
   return { deps, printed, config, permissions, specs };
 }

@@ -7,6 +7,20 @@ import { ToolRegistry } from '../tools/registry.js';
 import { err, ok, type ToolDefinition, type ToolResult } from '../tools/types.js';
 import { truncateMiddle } from '../utils/truncate.js';
 import { Agent, type AgentHooks } from './loop.js';
+import { ORCHESTRATOR_ID, type SwarmController } from '../swarm/controller.js';
+
+let AGENT_SEQ = 0;
+
+/** Guess a worker "role" from the subtask description for the office viewer. */
+function roleFor(description: string): string {
+  const d = description.toLowerCase();
+  if (/(review|audit|lint)/.test(d)) return 'reviewer';
+  if (/(test|spec|coverage)/.test(d)) return 'tester';
+  if (/(security|pentest|vuln|exploit|attack)/.test(d)) return 'security';
+  if (/(explore|find|locate|search|map|investigate|read|understand)/.test(d)) return 'explorer';
+  if (/(write|implement|build|add|fix|refactor|edit|code)/.test(d)) return 'coder';
+  return 'worker';
+}
 
 const MAX_DEPTH = 2;
 const SUBAGENT_MAX_TURNS = 30;
@@ -28,6 +42,8 @@ export interface TaskToolDeps {
   depth: number;
   /** Forward subtask activity to the UI. */
   hooks?: Pick<AgentHooks, 'onToolStart' | 'onToolEnd'>;
+  /** Optional swarm bus: when the viewer is running, subtasks appear as workers. */
+  swarm?: SwarmController;
 }
 
 /**
@@ -72,24 +88,65 @@ export function createTaskTool(deps: TaskToolDeps): ToolDefinition<Args> {
         ...deps.config,
         maxTurns: Math.min(deps.config.maxTurns, SUBAGENT_MAX_TURNS),
       };
+
+      // --- Swarm wiring: register this subtask as a worker in the office ---
+      const swarm = deps.swarm?.running ? deps.swarm : undefined;
+      const agentId = `w${++AGENT_SEQ}`;
+      const role = roleFor(args.description);
+      let hivePrompt = '';
+      if (swarm) {
+        swarm.emit.spawned(agentId, args.description, role, ORCHESTRATOR_ID);
+        swarm.emit.comm(ORCHESTRATOR_ID, agentId, `delegated: ${args.description}`);
+        swarm.emit.status(agentId, 'thinking');
+        // Hive memory: share what earlier workers already found.
+        const notes = deps.swarm?.bus.blackboard() ?? [];
+        if (notes.length > 0) {
+          hivePrompt =
+            '\n\n# Hive shared memory\n\nOther agents working in parallel have already shared these findings — build on them, do not repeat their work:\n' +
+            notes.slice(-12).map((n) => `- ${n.note}`).join('\n');
+        }
+      }
+
       const agent = new Agent({
         provider: deps.provider,
         config: subConfig,
         registry: subRegistry,
         permissions: deps.permissions,
         session: subSession,
-        systemPrompt: deps.getSystemPrompt() + '\n\n# Subtask Mode\n\nYou are a subtask of a larger agent. Complete the assignment below and return a concise, factual result — the parent agent only sees your final message.',
+        systemPrompt:
+          deps.getSystemPrompt() +
+          '\n\n# Subtask Mode\n\nYou are a subtask of a larger agent. Complete the assignment below and return a concise, factual result — the parent agent only sees your final message.' +
+          hivePrompt,
         depth: deps.depth + 1,
         hooks: {
           onTextDelta: () => {},
-          onToolStart: (call, summary) => deps.hooks?.onToolStart(call, `↳ ${summary}`),
-          onToolEnd: (call, result) => deps.hooks?.onToolEnd(call, result),
+          onToolStart: (call, summary) => {
+            if (swarm) {
+              swarm.emit.status(agentId, 'working');
+              swarm.emit.tool(agentId, call.name, summary, 'start');
+            }
+            deps.hooks?.onToolStart(call, `↳ ${summary}`);
+          },
+          onToolEnd: (call, result) => {
+            if (swarm) swarm.emit.tool(agentId, call.name, '', 'end', !result.isError);
+            deps.hooks?.onToolEnd(call, result);
+          },
           onCompact: () => {},
-          onError: () => {},
+          onError: (message) => {
+            if (swarm) swarm.emit.say(agentId, `error: ${message}`);
+          },
         },
         signal: ctx.signal,
       });
       const result = await agent.run(args.prompt);
+
+      if (swarm) {
+        // Post a short finding to the shared blackboard and report back.
+        const summary = truncateMiddle(result.finalText || '(no output)', { maxChars: 160 }).text.replace(/\s+/g, ' ');
+        swarm.emit.board(agentId, `${args.description} → ${summary}`);
+        swarm.emit.comm(agentId, ORCHESTRATOR_ID, 'reporting results');
+        swarm.emit.done(agentId, result.status === 'error' ? 'error' : 'done');
+      }
       const t = truncateMiddle(result.finalText || '(subtask produced no text output)', { maxChars: 8000 });
       const header = `[subtask "${args.description}" finished: ${result.status}]\n\n`;
       if (result.status === 'error') {

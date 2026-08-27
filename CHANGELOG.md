@@ -5,6 +5,15 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Added
+- **Swarm mode — a live 3D "office" visualization of the agent swarm.** `ox --swarm`
+  or `/swarm` opens a self-contained Three.js page (served by a tiny built-in
+  SSE server on `127.0.0.1`) where each parallel subtask appears as a worker at a
+  desk: colored by role, animating while it runs tools, showing speech bubbles,
+  exchanging hand-off arcs, and posting findings to a shared **blackboard** (hive
+  memory) that later agents build on. An orchestrator worker delegates and collects
+  reports. No runtime dependencies; the viewer loads Three.js from a CDN.
+
 ### Changed
 - **Pentest mode no longer prompts for every action.** When pentest mode is ON the
   operator is treated as the authorized owner of the target, so the security toolkit

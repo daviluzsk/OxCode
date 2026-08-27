@@ -19,6 +19,7 @@ export interface ParsedArgs {
   reasoningEffort?: ReasoningEffort;
   dangerouslySkipPermissions: boolean;
   pentest: boolean;
+  swarm: boolean;
   outputFormat: OutputFormat;
   maxTurns?: number;
   help: boolean;
@@ -35,6 +36,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     resume: false,
     dangerouslySkipPermissions: false,
     pentest: false,
+    swarm: false,
     outputFormat: 'text',
     help: false,
     version: false,
@@ -127,6 +129,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case '--pentest':
         out.pentest = true;
         break;
+      case '--swarm':
+        out.swarm = true;
+        break;
       case '--output-format': {
         const v = next();
         const parsed = OutputFormatSchema.safeParse(v);
@@ -174,6 +179,7 @@ Options:
       --permission-mode <mode>  default | askAll | acceptEdits | plan | dangerouslySkipPermissions
       --effort <level>          Reasoning effort: low | medium | high
       --pentest                 Enable pentest mode (authorized security-testing methodology)
+      --swarm                   Open the 3D swarm office: parallel subtasks appear as live workers
       --dangerously-skip-permissions
                                 Run every tool without asking (dangerous)
       --output-format <fmt>     text | json | stream-json (headless mode)

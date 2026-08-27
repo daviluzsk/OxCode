@@ -11,6 +11,8 @@ import { Session as SessionClass, type SessionStore } from '../sessions/store.js
 import type { Skill } from '../skills.js';
 import { isGitRepo } from '../tools/git.js';
 import type { ToolRegistry } from '../tools/registry.js';
+import type { SwarmController } from '../swarm/controller.js';
+import { openInBrowser } from '../utils/openBrowser.js';
 import { maskKey } from '../utils/redact.js';
 import { estimateTokens } from '../utils/truncate.js';
 import { expandCustomCommand, loadCustomCommands } from './custom.js';
@@ -44,6 +46,7 @@ export interface CommandDeps {
   mcp: McpManager | null;
   profile: RepoProfile | null;
   skills: Skill[];
+  swarm: SwarmController;
 }
 
 /** One row in the generic interactive picker (see CommandHost.pickChoice). */
@@ -84,6 +87,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'skills', description: 'List installed skills (.ox/skills)' },
   { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
   { name: 'btw', description: 'Side question without interrupting the current run' },
+  { name: 'swarm', description: 'Open the 3D swarm office visualization (/swarm off to stop)' },
   { name: 'status', description: 'Show model, repository, permissions and session info' },
   { name: 'config', description: 'Show the resolved configuration' },
   { name: 'permissions', description: 'Pick the permission mode (/permissions opens a menu)' },
@@ -301,6 +305,29 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         return { kind: 'handled' };
       }
       host.btw(arg);
+      return { kind: 'handled' };
+    }
+
+    case 'swarm': {
+      const swarm = deps.swarm;
+      if (arg === 'off' || arg === 'stop') {
+        if (swarm.running) {
+          await swarm.stop();
+          host.print('Swarm viewer stopped.');
+        } else {
+          host.print('Swarm viewer is not running.');
+        }
+        return { kind: 'handled' };
+      }
+      const url = await swarm.start();
+      const opened = arg === 'no-open' ? false : openInBrowser(url);
+      host.print(
+        `🐝 Swarm office live at ${url}\n` +
+          'Parallel subtasks (the agent\'s `task` calls) now appear as workers in a 3D office — ' +
+          'they move, talk, share findings on the blackboard and hand results back to the orchestrator.\n' +
+          (opened ? 'Opened in your browser.' : `Open it in your browser: ${url}`) +
+          '\nTip: ask for something big and say "split the work across parallel agents". /swarm off to stop.',
+      );
       return { kind: 'handled' };
     }
 

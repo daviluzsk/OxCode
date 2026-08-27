@@ -18,6 +18,7 @@ import { createBuiltinRegistry } from './tools/index.js';
 import { createPentestTools } from './tools/pentest.js';
 import { createPentestProTools } from './tools/pentestPro.js';
 import { ToolRegistry } from './tools/registry.js';
+import { SwarmController } from './swarm/controller.js';
 
 export interface Runtime {
   config: ResolvedConfig;
@@ -30,6 +31,7 @@ export interface Runtime {
   profile: RepoProfile;
   skills: Skill[];
   mcp: McpManager | null;
+  swarm: SwarmController;
   abort: AbortController;
   makeAgent(hooks?: AgentHooks, signal?: AbortSignal): Agent;
   /**
@@ -61,6 +63,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
   const registry = createBuiltinRegistry(todoStore);
   const permissions = new PermissionManager(config.permissionMode, opts.approver, () => config.pentest);
   const sessionStore = new SessionStore();
+  const swarm = new SwarmController();
   const abort = new AbortController();
 
   const mcp = new McpManager();
@@ -112,6 +115,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
       getSystemPrompt: buildPrompt,
       depth: 0,
       hooks: opts.hooks,
+      swarm,
     }),
   );
 
@@ -128,6 +132,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
     profile,
     skills,
     mcp,
+    swarm,
     abort,
     makeAgent(hooks?: AgentHooks, signal?: AbortSignal) {
       return new Agent({
@@ -179,6 +184,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
     dispose() {
       void mcp.closeAll();
       void browser.close();
+      void swarm.stop();
     },
   };
   return runtime;

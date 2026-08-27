@@ -278,6 +278,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
             mcp: runtime.mcp,
             profile: runtime.profile,
             skills: runtime.skills,
+            swarm: runtime.swarm,
           });
           if (outcome.kind === 'prompt') {
             pushEntry({ id: nextId(), kind: 'user', text });

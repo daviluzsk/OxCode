@@ -147,6 +147,17 @@ export async function main(argv: string[]): Promise<number> {
       process.stderr.write('⚠ Running with --dangerously-skip-permissions: every tool executes without approval.\n');
     }
 
+    if (args.swarm) {
+      try {
+        const url = await runtime.swarm.start();
+        const { openInBrowser } = await import('../utils/openBrowser.js');
+        openInBrowser(url);
+        process.stderr.write(`🐝 Swarm office live at ${url} — parallel subtasks appear as workers.\n`);
+      } catch (e) {
+        process.stderr.write(`Could not start the swarm viewer: ${(e as Error).message}\n`);
+      }
+    }
+
     const { runInteractive } = await import('../ui/run.js');
     await runInteractive(runtime, args.resume);
     runtime.dispose();
