@@ -22,6 +22,8 @@ export const SettingsFileSchema = z
     provider: z.enum(['openrouter', 'mock']).optional(),
     baseUrl: z.string().url().optional(),
     apiKey: z.string().optional(),
+    /** NVIDIA NIM API key (nvapi-...) for NVIDIA-hosted models. */
+    nvidiaApiKey: z.string().optional(),
     permissionMode: PermissionModeSchema.optional(),
     reasoningEffort: ReasoningEffortSchema.optional(),
     /** Custom instructions appended to the system prompt. */
@@ -45,6 +47,8 @@ export interface ResolvedConfig {
   provider: 'openrouter' | 'mock';
   baseUrl: string;
   apiKey: string | undefined;
+  /** NVIDIA NIM API key, used when the active model is NVIDIA-hosted. */
+  nvidiaApiKey?: string | undefined;
   permissionMode: PermissionMode;
   reasoningEffort: ReasoningEffort | undefined;
   appendSystemPrompt: string | undefined;
@@ -58,6 +62,7 @@ export interface ResolvedConfig {
 
 export const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
+export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 export const DEFAULT_MAX_TURNS = 200;
 export const DEFAULT_COMPACT_THRESHOLD = 120_000;
 

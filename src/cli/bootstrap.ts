@@ -8,7 +8,8 @@ import { headlessApprover } from '../permissions/manager.js';
 import { createRuntime } from '../runtime.js';
 import { SessionStore } from '../sessions/store.js';
 import { runHeadless } from '../headless.js';
-import { ensureApiKeyInteractive } from './ensureKey.js';
+import { ensureApiKeyInteractive, ensureNvidiaKeyInteractive } from './ensureKey.js';
+import { isNvidiaModel } from '../api/models.js';
 import { logger } from '../utils/logger.js';
 import { redactSecrets } from '../utils/redact.js';
 
@@ -173,6 +174,13 @@ export async function main(argv: string[]): Promise<number> {
       runtime.dispose();
       logger.close();
       return code;
+    }
+
+    // First-run NVIDIA key prompt: the active model is NVIDIA-hosted but no key set.
+    if (!headless && isNvidiaModel(runtime.config.model) && !runtime.config.nvidiaApiKey) {
+      const nv = await ensureNvidiaKeyInteractive();
+      if (nv) runtime.config.nvidiaApiKey = nv;
+      else process.stderr.write('No NVIDIA key — switch models with /model or set nvidiaApiKey later.\n');
     }
 
     if (args.dangerouslySkipPermissions) {

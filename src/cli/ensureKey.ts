@@ -38,8 +38,46 @@ export async function ensureApiKeyInteractive(): Promise<string | null> {
   }
 }
 
-/** Merge the key into ~/.ox/settings.json without clobbering other fields. */
+/**
+ * First-run NVIDIA API key setup — asked when the active model is NVIDIA-hosted
+ * and no NVIDIA key is configured yet. Saved to ~/.ox/settings.json.
+ */
+export async function ensureNvidiaKeyInteractive(): Promise<string | null> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
+  process.stdout.write(
+    [
+      'This model runs on the NVIDIA API, but no NVIDIA key is set.',
+      'Get one at https://build.nvidia.com (API Keys) — it looks like nvapi-...',
+      'It will be saved to ~/.ox/settings.json — you only do this once.',
+      '',
+    ].join('\n'),
+  );
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question('NVIDIA API key: ');
+    const key = answer.trim();
+    if (!key) return null;
+    if (!/^nvapi-\S{8,}$/.test(key)) {
+      process.stdout.write('That does not look like an NVIDIA key (expected nvapi-...). Not saved.\n');
+      return null;
+    }
+    saveSetting('nvidiaApiKey', key);
+    process.stdout.write(`Saved ${maskKey(key)} to ${userSettingsPath()}\n\n`);
+    return key;
+  } catch {
+    return null;
+  } finally {
+    rl.close();
+  }
+}
+
+/** Merge the OpenRouter key into ~/.ox/settings.json without clobbering others. */
 export function saveApiKey(key: string): void {
+  saveSetting('apiKey', key);
+}
+
+/** Merge one field into ~/.ox/settings.json without clobbering other fields. */
+export function saveSetting(field: string, value: string): void {
   const file = userSettingsPath();
   let settings: Record<string, unknown> = {};
   try {
@@ -47,7 +85,7 @@ export function saveApiKey(key: string): void {
   } catch {
     /* file missing or invalid — start fresh */
   }
-  settings.apiKey = key;
+  settings[field] = value;
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(settings, null, 2), 'utf8');
 }

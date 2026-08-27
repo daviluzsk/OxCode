@@ -19,6 +19,8 @@ export interface OpenRouterOptions {
   appName?: string;
   maxRetries?: number;
   fetchImpl?: typeof fetch;
+  /** Optional per-model endpoint router (e.g. NVIDIA vs OpenRouter). */
+  route?: (model: string) => { baseUrl: string; apiKey: string | undefined; keyName?: string } | null;
 }
 
 interface RawToolCallDelta {
@@ -113,6 +115,7 @@ export class OpenRouterProvider implements ModelProvider {
   private readonly appName: string;
   private readonly maxRetries: number;
   private readonly fetchImpl?: typeof fetch;
+  private readonly route?: OpenRouterOptions['route'];
 
   constructor(options: OpenRouterOptions) {
     this.apiKey = options.apiKey;
@@ -121,6 +124,7 @@ export class OpenRouterProvider implements ModelProvider {
     this.appName = options.appName ?? 'OxCode';
     this.maxRetries = options.maxRetries ?? 4;
     this.fetchImpl = options.fetchImpl;
+    this.route = options.route;
   }
 
   async *stream(request: ModelRequest): AsyncIterable<ModelEvent> {
@@ -151,9 +155,22 @@ export class OpenRouterProvider implements ModelProvider {
   }
 
   private async *streamOnce(fetchImpl: typeof fetch, request: ModelRequest): AsyncGenerator<ModelEvent> {
+    // When a route matches, use ITS endpoint+key exclusively (do not fall back
+    // to the default key, or we'd send the wrong provider's key).
+    const ep = this.route?.(request.model) ?? null;
+    const baseUrl = ep ? ep.baseUrl : this.baseUrl;
+    const apiKey = ep ? ep.apiKey : this.apiKey;
+    if (!apiKey) {
+      throw new ApiError(
+        `No ${ep?.keyName ?? 'API'} key set for model "${request.model}". Set the ${ep?.keyName ?? 'API'} key (e.g. nvidiaApiKey in ~/.ox/settings.json or the NVIDIA_API_KEY env var).`,
+        'auth',
+        undefined,
+        false,
+      );
+    }
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     };
     if (this.siteUrl) headers['HTTP-Referer'] = this.siteUrl;
     if (this.appName) headers['X-Title'] = this.appName;
@@ -206,7 +223,7 @@ export class OpenRouterProvider implements ModelProvider {
         ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
         : ApiError.network(err);
 
-    const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
+    const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
     let response: Response;
     bump();
     try {

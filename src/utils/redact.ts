@@ -7,6 +7,8 @@ const SECRET_PATTERNS: Array<{ re: RegExp; label: string }> = [
   // OpenRouter / generic sk- keys
   { re: /\bsk-or-[A-Za-z0-9_\-]{8,}\b/g, label: 'sk-or-***' },
   { re: /\bsk-[A-Za-z0-9_\-]{16,}\b/g, label: 'sk-***' },
+  // NVIDIA NIM keys
+  { re: /\bnvapi-[A-Za-z0-9_\-]{12,}\b/g, label: 'nvapi-***' },
   // Bearer tokens
   { re: /(Bearer\s+)[A-Za-z0-9_\-.]{12,}/gi, label: '$1***' },
   // AWS-style access keys

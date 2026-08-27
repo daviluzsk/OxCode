@@ -6,6 +6,13 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **NVIDIA API models.** OxCode now routes NVIDIA-hosted models to the NVIDIA API
+  (`integrate.api.nvidia.com`) with a separate NVIDIA key, while everything else
+  stays on OpenRouter — chosen automatically per model id. New presets in `/model`:
+  `nvidia/nemotron-3-ultra-550b-a55b`, `deepseek-ai/deepseek-v4-pro-0813`,
+  `deepseek-ai/deepseek-v4-flash-0731`, `moonshotai/kimi-k3`. First time you pick
+  one it prompts for the NVIDIA key (`nvapi-…`) and saves it to `~/.ox/settings.json`
+  (or set `NVIDIA_API_KEY`). GLM 5.2 stays on OpenRouter.
 - **`/mrrobot` — fsociety mode.** One command flips on pentest mode *and* repaints
   the UI into a red "Mr Robot" hacker theme: the brand becomes **Mr Robot**, the ox
   mascot becomes an fsociety mask, the accent turns red, and a banner drops in.

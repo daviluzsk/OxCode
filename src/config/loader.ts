@@ -102,6 +102,8 @@ export function resolveConfig(opts: {
 
   const apiKey =
     project.apiKey ?? userSettings.apiKey ?? env.OPENROUTER_API_KEY ?? env.OX_API_KEY ?? undefined;
+  const nvidiaApiKey =
+    project.nvidiaApiKey ?? userSettings.nvidiaApiKey ?? env.NVIDIA_API_KEY ?? env.OX_NVIDIA_API_KEY ?? undefined;
 
   return {
     cwd: opts.cwd,
@@ -109,6 +111,7 @@ export function resolveConfig(opts: {
     provider,
     baseUrl: cli.baseUrl ?? project.baseUrl ?? userSettings.baseUrl ?? env.OX_BASE_URL ?? defaultConfig.baseUrl,
     apiKey,
+    nvidiaApiKey,
     permissionMode,
     reasoningEffort,
     appendSystemPrompt: project.appendSystemPrompt ?? userSettings.appendSystemPrompt,

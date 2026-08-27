@@ -413,8 +413,9 @@ Malformed configs are rejected with human-readable, per-field errors.
 
 | Variable | Purpose |
 |---|---|
-| `OPENROUTER_API_KEY` | API key (or `OX_API_KEY`) |
-| `OX_BASE_URL` | Override API base URL (default `https://openrouter.ai/api/v1`) |
+| `OPENROUTER_API_KEY` | OpenRouter API key (or `OX_API_KEY`) |
+| `NVIDIA_API_KEY` | NVIDIA API key (`nvapi-…`) for NVIDIA-hosted models (or `OX_NVIDIA_API_KEY`) |
+| `OX_BASE_URL` | Override the OpenRouter base URL (default `https://openrouter.ai/api/v1`) |
 | `OX_MODEL` | Override model (default `nvidia/nemotron-3-ultra-550b-a55b:free`) |
 | `OX_EFFORT` | Reasoning effort: `low` / `medium` / `high` |
 | `OX_PROVIDER` | `openrouter` (default) or `mock` (offline scripted provider) |
@@ -422,6 +423,17 @@ Malformed configs are rejected with human-readable, per-field errors.
 | `OX_ASCII=1` | ASCII-only UI symbols |
 
 Any OpenAI-compatible endpoint works via `OX_BASE_URL` / `--base-url`.
+
+### NVIDIA-hosted models
+
+Some models run on the **NVIDIA API** (`integrate.api.nvidia.com`) instead of OpenRouter — pick them in `/model`:
+
+- `nvidia/nemotron-3-ultra-550b-a55b` — Nemotron 3 Ultra 550B
+- `deepseek-ai/deepseek-v4-pro-0813` — DeepSeek V4 Pro
+- `deepseek-ai/deepseek-v4-flash-0731` — DeepSeek V4 Flash
+- `moonshotai/kimi-k3` — Kimi K3
+
+The first time you select one, OxCode asks for your NVIDIA key (`nvapi-…`, from [build.nvidia.com](https://build.nvidia.com)) and saves it to `~/.ox/settings.json` — or set `NVIDIA_API_KEY`. OxCode routes each request to the right endpoint and key automatically; GLM 5.2 and the other models stay on OpenRouter.
 
 ## MCP (Model Context Protocol)
 

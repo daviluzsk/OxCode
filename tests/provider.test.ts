@@ -113,6 +113,42 @@ describe('OpenRouterProvider (mocked fetch)', () => {
     }
   }, 6000);
 
+  it('routes models to different endpoints/keys via the route option', async () => {
+    let seenUrl = '';
+    let seenAuth = '';
+    const provider = new OpenRouterProvider({
+      apiKey: 'sk-or-openrouter',
+      baseUrl: 'https://openrouter.test/v1',
+      route: (m) =>
+        m.startsWith('deepseek-ai/') || m.startsWith('nvidia/nemotron-3-ultra-550b-a55b')
+          ? { baseUrl: 'https://nvidia.test/v1', apiKey: 'nvapi-secret', keyName: 'NVIDIA' }
+          : null,
+      fetchImpl: async (url, init) => {
+        seenUrl = String(url);
+        seenAuth = (init!.headers as Record<string, string>).Authorization ?? '';
+        return sseResponse([doneChunk]);
+      },
+    });
+    // NVIDIA-hosted model → NVIDIA endpoint + NVIDIA key
+    await collectStream(provider.stream({ model: 'deepseek-ai/deepseek-v4-flash-0731', messages: [], tools: [] }));
+    expect(seenUrl).toBe('https://nvidia.test/v1/chat/completions');
+    expect(seenAuth).toBe('Bearer nvapi-secret');
+    // Other model → OpenRouter endpoint + OpenRouter key
+    await collectStream(provider.stream({ model: 'z-ai/glm-5.2:free', messages: [], tools: [] }));
+    expect(seenUrl).toBe('https://openrouter.test/v1/chat/completions');
+    expect(seenAuth).toBe('Bearer sk-or-openrouter');
+  });
+
+  it('errors clearly when the routed key is missing', async () => {
+    const provider = new OpenRouterProvider({
+      apiKey: 'sk-or',
+      baseUrl: 'https://openrouter.test/v1',
+      route: () => ({ baseUrl: 'https://nvidia.test/v1', apiKey: undefined, keyName: 'NVIDIA' }),
+      fetchImpl: async () => sseResponse([doneChunk]),
+    });
+    await expect(collectStream(provider.stream({ model: 'deepseek-ai/x', messages: [], tools: [] }))).rejects.toThrow(/NVIDIA key/i);
+  });
+
   it('does not retry auth failures and gives a useful error', async () => {
     let attempts = 0;
     const provider = new OpenRouterProvider({
