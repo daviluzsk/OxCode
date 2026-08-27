@@ -32,9 +32,9 @@ export function HistoryView({ entry }: { entry: HistoryEntry }): React.JSX.Eleme
       );
     case 'banner':
       return (
-        <Box flexDirection="column" marginTop={1} marginLeft={1} borderStyle="round" borderColor={colors.accent} paddingX={2}>
+        <Box flexDirection="column" marginTop={1}>
           {entry.lines.map((l, i) => (
-            <Text key={i} color={colors.accent} bold>
+            <Text key={i} color={colors.accent} bold wrap="truncate-end">
               {l}
             </Text>
           ))}

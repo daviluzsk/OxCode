@@ -334,6 +334,14 @@ export class OpenRouterProvider implements ModelProvider {
     }
 
     const choice = obj.choices?.[0];
+    // Reasoning models (Nemotron, DeepSeek-R, etc.) stream their chain-of-thought
+    // in reasoning_content before the actual answer. Surface it so the UI shows
+    // live "thinking" instead of a frozen spinner — it is NOT part of the answer.
+    const reasoning = (choice?.delta as { reasoning_content?: string; reasoning?: string } | undefined);
+    const rc = reasoning?.reasoning_content ?? reasoning?.reasoning;
+    if (rc) {
+      yield { type: 'reasoning', text: rc };
+    }
     if (choice?.delta?.content) {
       yield { type: 'text-delta', text: choice.delta.content };
     }

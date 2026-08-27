@@ -17,6 +17,8 @@ export interface RunResult {
 
 export interface AgentHooks {
   onTextDelta(text: string): void;
+  /** Live chain-of-thought from reasoning models (not part of the answer). */
+  onReasoning?(text: string): void;
   onToolStart(call: ToolCallRequest, summary: string): void;
   onToolEnd(call: ToolCallRequest, result: ToolResult): void;
   onCompact(beforeMessages: number, afterMessages: number): void;
@@ -25,6 +27,7 @@ export interface AgentHooks {
 
 export const nullHooks: AgentHooks = {
   onTextDelta: () => {},
+  onReasoning: () => {},
   onToolStart: () => {},
   onToolEnd: () => {},
   onCompact: () => {},
@@ -128,6 +131,7 @@ export class Agent {
             reasoningEffort: config.reasoningEffort,
           }),
           (delta) => this.hooks.onTextDelta(delta),
+          (r) => this.hooks.onReasoning?.(r),
         );
       } catch (e) {
         if (e instanceof ApiError && e.kind === 'cancelled') {

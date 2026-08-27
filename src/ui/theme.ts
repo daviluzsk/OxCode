@@ -71,12 +71,42 @@ export function applyTheme(mode: ThemeMode): void {
   }
 }
 
-/** Big banner shown when toggling fsociety mode. */
+/** Big block "MR ROBOT" banner shown when fsociety mode engages. */
 export const FSOCIETY_BANNER = [
-  '███  fsociety  ███',
-  '  M R   R O B O T  ',
-  "  Hello, friend.   ",
+  '',
+  '  ███╗   ███╗██████╗     ██████╗  ██████╗ ██████╗  ██████╗ ████████╗',
+  '  ████╗ ████║██╔══██╗    ██╔══██╗██╔═══██╗██╔══██╗██╔═══██╗╚══██╔══╝',
+  '  ██╔████╔██║██████╔╝    ██████╔╝██║   ██║██████╔╝██║   ██║   ██║   ',
+  '  ██║╚██╔╝██║██╔══██╗    ██╔══██╗██║   ██║██╔══██╗██║   ██║   ██║   ',
+  '  ██║ ╚═╝ ██║██║  ██║    ██║  ██║╚██████╔╝██████╔╝╚██████╔╝   ██║   ',
+  '  ╚═╝     ╚═╝╚═╝  ╚═╝    ╚═╝  ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝    ╚═╝   ',
+  '',
+  '  [ fsociety ]  control is an illusion.',
+  '',
+  '  [+] encrypted channel established',
+  '  [+] root access granted',
+  '  [+] Hello, friend.',
+  '',
 ];
+
+/** ASCII fallback banner when the terminal can't render box-drawing glyphs. */
+export const FSOCIETY_BANNER_ASCII = [
+  '',
+  '  #     # ######      ######  #######  ######  #######  #######',
+  '  ##   ## #     #     #     # #     #  #     # #     #     #   ',
+  '  # # # # ######      ######  #     #  ######  #     #     #   ',
+  '  #  #  # #    #      #   #   #     #  #     # #     #     #   ',
+  '  #     # #     #     #    #  #######  ######  #######     #   ',
+  '',
+  '  [ fsociety ]  control is an illusion.',
+  '  [+] encrypted channel established   [+] Hello, friend.',
+  '',
+];
+
+/** The fsociety banner for this terminal (box-drawing, or ASCII fallback). */
+export function fsocietyBanner(): string[] {
+  return ascii ? FSOCIETY_BANNER_ASCII : FSOCIETY_BANNER;
+}
 
 // Back-compat exports (some components import these names).
 export const MASCOT = brand.mascot;

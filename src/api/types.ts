@@ -59,6 +59,7 @@ export type FinishReason = 'stop' | 'tool_calls' | 'length' | 'cancelled' | 'err
 
 export type ModelEvent =
   | { type: 'text-delta'; text: string }
+  | { type: 'reasoning'; text: string }
   | { type: 'tool-call'; call: ToolCallRequest }
   | { type: 'usage'; usage: UsageInfo }
   | { type: 'done'; finishReason: FinishReason }
@@ -82,6 +83,7 @@ export interface CollectedResponse {
 export async function collectStream(
   events: AsyncIterable<ModelEvent>,
   onTextDelta?: (text: string) => void,
+  onReasoning?: (text: string) => void,
 ): Promise<CollectedResponse> {
   let text = '';
   const toolCalls: ToolCallRequest[] = [];
@@ -92,6 +94,9 @@ export async function collectStream(
       case 'text-delta':
         text += ev.text;
         onTextDelta?.(ev.text);
+        break;
+      case 'reasoning':
+        onReasoning?.(ev.text);
         break;
       case 'tool-call':
         toolCalls.push(ev.call);

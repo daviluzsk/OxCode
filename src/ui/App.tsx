@@ -8,7 +8,7 @@ import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
 import { loadInputHistory, saveInputHistory } from './inputHistory.js';
-import { colors, symbols, brand, applyTheme, FSOCIETY_BANNER } from './theme.js';
+import { colors, symbols, brand, applyTheme, fsocietyBanner } from './theme.js';
 import { resolveAttachments } from './attachments.js';
 import { Header } from './components/Header.js';
 import { HistoryView, type HistoryEntry } from './components/HistoryView.js';
@@ -48,6 +48,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   const [spinnerFrame, setSpinnerFrame] = useState(0);
   const [exitHint, setExitHint] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [thinking, setThinking] = useState(''); // live reasoning stream (dim)
   const [, setMrRobot] = useState(false); // forces a repaint when the theme flips
 
   const idRef = useRef(0);
@@ -104,8 +105,13 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
 
   const makeHooks = useCallback((): AgentHooks => {
     return {
-      onTextDelta: (text) => setStreaming((s) => s + text),
+      onTextDelta: (text) => {
+        setThinking('');
+        setStreaming((s) => s + text);
+      },
+      onReasoning: (text) => setThinking((t) => (t + text).replace(/\s+/g, ' ').slice(-220)),
       onToolStart: (call, summary) => {
+        setThinking('');
         flushStreaming();
         setActiveTools((tools) => [
           ...tools,
@@ -169,8 +175,11 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       setMrRobot: (on) => {
         applyTheme(on ? 'mrrobot' : 'ox');
         setMrRobot(on);
-        if (on) pushEntry({ id: nextId(), kind: 'banner', lines: FSOCIETY_BANNER });
-        else pushInfo('fsociety mode off — back to OxCode.');
+        // Clear the scroll so the banner + repainted header stand alone
+        // (fixes the old "stuck under the normal panel" look).
+        setHistory([]);
+        if (on) pushEntry({ id: nextId(), kind: 'banner', lines: fsocietyBanner() });
+        else pushInfo('fsociety mode off — back to OxCode. Terminal restored.');
       },
       loadSession: (s) => {
         runtime.replaceSession(s);
@@ -225,6 +234,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       setBusy(true);
       runStartRef.current = Date.now();
       setElapsed(0);
+      setThinking('');
       changedRef.current = { files: new Set(), added: 0, removed: 0 };
       const abort = new AbortController();
       runAbortRef.current = abort;
@@ -251,6 +261,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
         runtime.sessionStore.save(runtime.session);
       } finally {
         setBusy(false);
+        setThinking('');
         runAbortRef.current = null;
       }
     },
@@ -365,7 +376,12 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       ))}
 
       {busy ? (
-        <Box marginLeft={1} marginTop={activeTools.length === 0 && !streaming ? 1 : 0}>
+        <Box marginLeft={1} marginTop={activeTools.length === 0 && !streaming ? 1 : 0} flexDirection="column">
+          {thinking && !streaming ? (
+            <Text dimColor wrap="truncate-start">
+              {thinking}
+            </Text>
+          ) : null}
           <Text color={colors.accent}>
             <Text dimColor>{brand.mascotMini} </Text>
             {SPINNER[spinnerFrame]} {streaming ? '' : 'Thinking… '}

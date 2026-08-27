@@ -23,23 +23,6 @@ All notable changes to OxCode are documented here. Format loosely follows
   with `OX_NO_UPDATE=1`. Best-effort and offline-safe (skipped when it isn't a git
   clone, has local changes, or has no network).
 
-### Fixed
-- **No more infinite "Thinking…" hangs.** The model request had no timeout, so a
-  provider connection that stalled (open socket, no bytes, no `[DONE]`) left the
-  agent stuck forever until Ctrl+C. Added an idle watchdog that aborts the stream
-  when nothing arrives for a while (default 120s, `OX_STREAM_TIMEOUT_MS`), retries
-  a stalled connect, and surfaces a clear "stream stalled" error mid-stream — Ctrl+C
-  still works. Raised the default turn limit 100 → 200 so long agentic runs (e.g.
-  full pentests) stop hitting the cap prematurely.
-
-### Changed
-- **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
-  (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`
-  stealth endpoint was retired by OpenRouter (it now 404s). Updated the default,
-  the `/model` presets, help text, header and docs. Override any time with
-  `--model` / `OX_MODEL` / `/model`.
-
-### Added
 - **Kali box — the AI's own machine.** `kali_up` boots a disposable Kali Linux
   container (Docker) that mounts the workspace at `/work` and installs a core
   tool set on first run; `kali_run` executes commands inside it (the agent's
@@ -73,11 +56,6 @@ All notable changes to OxCode are documented here. Format loosely follows
   level, pentest-mode gated, and routed through the shared HTTP client (so they
   also tunnel through Burp/ZAP).
 
-### Fixed
-- The shared offensive HTTP client now decodes `Transfer-Encoding: chunked`
-  responses, so JSON endpoints (GraphQL, REST) parse correctly.
-
-### Added (continued)
 - **OxProxy — a built-in "Burp for the AI".** A web-security workbench the agent
   drives with tools instead of a GUI: `proxy_send` issues and captures a request
   (returns a `#id`), `proxy_history` / `proxy_view` browse the capture store,
@@ -115,12 +93,6 @@ All notable changes to OxCode are documented here. Format loosely follows
   black-box pentests the result using only externally observable information, like
   a real external pentester. Roles are colored in the office (Planner is amber).
 
-### Fixed
-- **Communication wires now track the bots.** The blue links between workers are
-  rebuilt from each bot's live position every frame (and are smoother), so a link
-  no longer points at where a bot *was* when it now walks around the office.
-
-### Added (earlier this cycle)
 - **Swarm mode — a live 3D "office" visualization of the agent swarm.** `ox --swarm`
   or `/swarm` opens a self-contained Three.js page (served by a tiny built-in
   SSE server on `127.0.0.1`) where each parallel subtask appears as a worker at a
@@ -137,7 +109,19 @@ All notable changes to OxCode are documented here. Format loosely follows
   **Click any worker to open a wardrobe** (shirt, pants, hair, skin, glasses, cap);
   outfits are saved per worker in the browser.
 
+- **Interactive pickers for `/effort`, `/permissions`, and `/pentest`** — running
+  them with no argument now opens an arrow-key menu (like `/model`) instead of
+  requiring you to type the value. Typing the value still works
+  (`/effort high`, `/permissions plan`). Powered by a new reusable `OptionPicker`
+  component and a generic `pickChoice` host method.
+
 ### Changed
+- **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
+  (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`
+  stealth endpoint was retired by OpenRouter (it now 404s). Updated the default,
+  the `/model` presets, help text, header and docs. Override any time with
+  `--model` / `OX_MODEL` / `/model`.
+
 - **Pentest mode no longer prompts for every action.** When pentest mode is ON the
   operator is treated as the authorized owner of the target, so the security toolkit
   (`net_scan`, `http_probe`, `web_fuzz`, `web_vuln_scan`, `http_request`, `form_brute`,
@@ -147,17 +131,31 @@ All notable changes to OxCode are documented here. Format loosely follows
   authorization before acting.
 
 ### Fixed
+- **Reasoning models no longer look frozen.** Models that stream their
+  chain-of-thought (`reasoning_content` — Nemotron, DeepSeek-R, etc.) used to show
+  a motionless "Thinking…" with no output until the answer arrived. Their reasoning
+  now streams live (dim, above the spinner) and is not saved as part of the answer.
+- **Bigger, cleaner `/mrrobot`.** fsociety mode now clears the screen and drops a
+  large red block "MR ROBOT" banner with an fsociety boot sequence (ASCII fallback
+  included) instead of a small banner cramped under the normal header.
+- **No more infinite "Thinking…" hangs.** The model request had no timeout, so a
+  provider connection that stalled (open socket, no bytes, no `[DONE]`) left the
+  agent stuck forever until Ctrl+C. Added an idle watchdog that aborts the stream
+  when nothing arrives for a while (default 120s, `OX_STREAM_TIMEOUT_MS`), retries
+  a stalled connect, and surfaces a clear "stream stalled" error mid-stream — Ctrl+C
+  still works. Raised the default turn limit 100 → 200 so long agentic runs (e.g.
+  full pentests) stop hitting the cap prematurely.
+
+- The shared offensive HTTP client now decodes `Transfer-Encoding: chunked`
+  responses, so JSON endpoints (GraphQL, REST) parse correctly.
+
+- **Communication wires now track the bots.** The blue links between workers are
+  rebuilt from each bot's live position every frame (and are smoother), so a link
+  no longer points at where a bot *was* when it now walks around the office.
+
 - **Markdown now renders in the terminal** — assistant replies no longer show raw
   `**bold**`, `*italic*`, `` `code` `` or `#` heading markers. A lightweight inline
   renderer translates them to Ink styles and drops the markers.
-
-### Added
-- **Interactive pickers for `/effort`, `/permissions`, and `/pentest`** — running
-  them with no argument now opens an arrow-key menu (like `/model`) instead of
-  requiring you to type the value. Typing the value still works
-  (`/effort high`, `/permissions plan`). Powered by a new reusable `OptionPicker`
-  component and a generic `pickChoice` host method.
-
 ## [0.2.0] — 2026-08-26
 
 ### Added
