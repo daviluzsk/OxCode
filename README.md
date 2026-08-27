@@ -301,6 +301,16 @@ description: Senior code review checklist
 | `inject_probe` | LFI / SSTI / command-injection detection PoC at a `FUZZ` marker |
 | `favicon_hash` | mmh3 favicon hash for Shodan/Censys pivoting |
 
+**Run the real tools.** Beyond the built-ins, OxCode can launch the genuine offensive binaries you already have installed and drive a real Burp Suite:
+
+| Tool | What it does |
+|---|---|
+| `security_tools` | List the catalog and show which real binaries are installed here |
+| `run_security_tool` | Launch a catalog tool with your args — **nmap, sqlmap, nikto, gobuster, ffuf, nuclei, wpscan, hydra, amass, subfinder, testssl.sh, …** — and capture its output |
+| `burp_scan` / `burp_scan_status` | Drive a real **Burp Suite Pro/Enterprise** via its REST API (`BURP_API_URL` / `BURP_API_KEY`) |
+
+Only names in the curated catalog can be launched (no arbitrary shell) and every run is time-bounded. The built-in dependency-free tools below are the fallback when a binary isn't present.
+
 **OxProxy — a built-in Burp-style workbench the agent drives with tools** (no external app needed):
 
 | Tool | Burp analog | What it does |

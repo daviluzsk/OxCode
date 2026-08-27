@@ -6,6 +6,14 @@ All notable changes to OxCode are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
+- **Run the REAL tools.** `security_tools` lists the genuine offensive binaries
+  installed on the machine and `run_security_tool` launches them with your
+  arguments and returns their output — nmap, sqlmap, nikto, gobuster/ffuf,
+  nuclei, wpscan, hydra, amass/subfinder, testssl.sh and ~30 more from a curated
+  catalog (only catalog names can be launched — no arbitrary shell — each run is
+  time-bounded). `burp_scan` / `burp_scan_status` drive a real **Burp Suite
+  Pro/Enterprise** through its REST API (`BURP_API_URL` / `BURP_API_KEY`). The
+  built-in dependency-free tools remain the fallback when a binary isn't present.
 - **Kali-style offensive toolkit (10 tools).** `dir_bruteforce` (gobuster/dirb
   content discovery), `vhost_scan`, `wpscan` (WordPress enum), `takeover_check`
   (subdomain takeover fingerprints), `s3_check` (open buckets), `dns_axfr` (zone

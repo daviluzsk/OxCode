@@ -20,6 +20,7 @@ import { createPentestProTools } from './tools/pentestPro.js';
 import { createOffsecTools } from './tools/offsec.js';
 import { createOxProxyTools } from './tools/oxproxy.js';
 import { createKaliTools } from './tools/kali.js';
+import { createSecurityToolTools } from './tools/toolrunner.js';
 import { ToolRegistry } from './tools/registry.js';
 import { SwarmController } from './swarm/controller.js';
 
@@ -100,6 +101,9 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
     registry.register(tool);
   }
   for (const tool of createKaliTools(config)) {
+    registry.register(tool);
+  }
+  for (const tool of createSecurityToolTools(config)) {
     registry.register(tool);
   }
 
