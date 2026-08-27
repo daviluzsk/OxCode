@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols, brand } from '../theme.js';
+import { colors, symbols, brand, mrrobotArt } from '../theme.js';
 import { VERSION } from '../../version.js';
 
 export interface HeaderProps {
@@ -10,6 +10,7 @@ export interface HeaderProps {
   fileCount: number | null;
   gitBranch: string | null;
   dangerMode: boolean;
+  mrRobot?: boolean;
 }
 
 const TIPS: Array<{ cmd: string; desc: string }> = [
@@ -21,7 +22,56 @@ const TIPS: Array<{ cmd: string; desc: string }> = [
   { cmd: '/swarm', desc: '3D agent office' },
 ];
 
-export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode }: HeaderProps): React.JSX.Element {
+/** The fsociety "boot" screen — shown in place of the normal header in Mr Robot mode. */
+function MrRobotScreen(): React.JSX.Element {
+  const red = colors.accent; // redBright while the mrrobot theme is applied
+  const time = new Date().toISOString().slice(11, 19);
+  const art = mrrobotArt();
+  return (
+    <Box flexDirection="column">
+      <Box justifyContent="space-between">
+        <Text>
+          <Text color={red}>[</Text>
+          <Text color="green">root</Text>
+          <Text color={red}>@fsociety</Text>
+          <Text color={red}> ~]# connect --secure</Text>
+        </Text>
+        <Text color={red} dimColor>
+          [UTC] {time}
+        </Text>
+      </Box>
+      <Text color={red}>[+] Establishing encrypted channel to 192.168.0.2:22 ...</Text>
+      <Text color={red}>[+] Authentication required</Text>
+      <Text color={red}>Password: ****************</Text>
+      <Text> </Text>
+      {art.map((l, i) => (
+        <Text key={i} color={red} bold wrap="truncate-end">
+          {l}
+        </Text>
+      ))}
+      <Text> </Text>
+      <Text color="green">[+] Login successful.</Text>
+      <Text color="green">[+] System boot sequence complete.</Text>
+      <Text color="green">[+] Welcome, friend.</Text>
+      <Text> </Text>
+      <Box justifyContent="space-between">
+        <Text>
+          <Text color={red}>[</Text>
+          <Text color="green">root</Text>
+          <Text color={red}>@fsociety ~]# </Text>
+          <Text color={red} inverse>
+            {' '}
+          </Text>
+        </Text>
+        <Text color={red}>[fsociety.dat]</Text>
+      </Box>
+    </Box>
+  );
+}
+
+export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode, mrRobot }: HeaderProps): React.JSX.Element {
+  if (mrRobot) return <MrRobotScreen />;
+
   const home = process.env.USERPROFILE ?? process.env.HOME ?? '';
   const shownCwd = home && cwd.startsWith(home) ? '~' + cwd.slice(home.length) : cwd;
   return (

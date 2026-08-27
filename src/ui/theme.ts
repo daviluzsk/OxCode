@@ -71,41 +71,27 @@ export function applyTheme(mode: ThemeMode): void {
   }
 }
 
-/** Big block "MR ROBOT" banner shown when fsociety mode engages. */
-export const FSOCIETY_BANNER = [
-  '',
-  '  ███╗   ███╗██████╗     ██████╗  ██████╗ ██████╗  ██████╗ ████████╗',
-  '  ████╗ ████║██╔══██╗    ██╔══██╗██╔═══██╗██╔══██╗██╔═══██╗╚══██╔══╝',
-  '  ██╔████╔██║██████╔╝    ██████╔╝██║   ██║██████╔╝██║   ██║   ██║   ',
-  '  ██║╚██╔╝██║██╔══██╗    ██╔══██╗██║   ██║██╔══██╗██║   ██║   ██║   ',
-  '  ██║ ╚═╝ ██║██║  ██║    ██║  ██║╚██████╔╝██████╔╝╚██████╔╝   ██║   ',
-  '  ╚═╝     ╚═╝╚═╝  ╚═╝    ╚═╝  ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝    ╚═╝   ',
-  '',
-  '  [ fsociety ]  control is an illusion.',
-  '',
-  '  [+] encrypted channel established',
-  '  [+] root access granted',
-  '  [+] Hello, friend.',
-  '',
+/** Big block "MR ROBOT" art (box-drawing). */
+export const MRROBOT_ART = [
+  '███╗   ███╗██████╗     ██████╗  ██████╗ ██████╗  ██████╗ ████████╗',
+  '████╗ ████║██╔══██╗    ██╔══██╗██╔═══██╗██╔══██╗██╔═══██╗╚══██╔══╝',
+  '██╔████╔██║██████╔╝    ██████╔╝██║   ██║██████╔╝██║   ██║   ██║   ',
+  '██║╚██╔╝██║██╔══██╗    ██╔══██╗██║   ██║██╔══██╗██║   ██║   ██║   ',
+  '██║ ╚═╝ ██║██║  ██║    ██║  ██║╚██████╔╝██████╔╝╚██████╔╝   ██║   ',
+  '╚═╝     ╚═╝╚═╝  ╚═╝    ╚═╝  ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝    ╚═╝   ',
 ];
 
-/** ASCII fallback banner when the terminal can't render box-drawing glyphs. */
-export const FSOCIETY_BANNER_ASCII = [
-  '',
-  '  #     # ######      ######  #######  ######  #######  #######',
-  '  ##   ## #     #     #     # #     #  #     # #     #     #   ',
-  '  # # # # ######      ######  #     #  ######  #     #     #   ',
-  '  #  #  # #    #      #   #   #     #  #     # #     #     #   ',
-  '  #     # #     #     #    #  #######  ######  #######     #   ',
-  '',
-  '  [ fsociety ]  control is an illusion.',
-  '  [+] encrypted channel established   [+] Hello, friend.',
-  '',
+/** ASCII fallback art. */
+export const MRROBOT_ART_ASCII = [
+  '#     # ######      ######  #######  ######  #######  #######',
+  '##   ## #     #     #     # #     #  #     # #     #     #   ',
+  '# # # # ######      ######  #     #  ######  #     #     #   ',
+  '#  #  # #    #      #   #   #     #  #     # #     #     #   ',
+  '#     # #     #     #    #  #######  ######  #######     #   ',
 ];
 
-/** The fsociety banner for this terminal (box-drawing, or ASCII fallback). */
-export function fsocietyBanner(): string[] {
-  return ascii ? FSOCIETY_BANNER_ASCII : FSOCIETY_BANNER;
+export function mrrobotArt(): string[] {
+  return ascii ? MRROBOT_ART_ASCII : MRROBOT_ART;
 }
 
 // Back-compat exports (some components import these names).

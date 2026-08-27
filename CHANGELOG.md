@@ -135,9 +135,12 @@ All notable changes to OxCode are documented here. Format loosely follows
   chain-of-thought (`reasoning_content` — Nemotron, DeepSeek-R, etc.) used to show
   a motionless "Thinking…" with no output until the answer arrived. Their reasoning
   now streams live (dim, above the spinner) and is not saved as part of the answer.
-- **Bigger, cleaner `/mrrobot`.** fsociety mode now clears the screen and drops a
-  large red block "MR ROBOT" banner with an fsociety boot sequence (ASCII fallback
-  included) instead of a small banner cramped under the normal header.
+- **`/mrrobot` is now a full fsociety takeover.** Entering the mode wipes the
+  terminal (scrollback included) and replaces the whole OxCode header with an
+  fsociety boot screen — `[root@fsociety ~]#` prompt with a UTC clock, an encrypted-
+  channel/auth sequence, a big red block **MR ROBOT** banner, and a `[fsociety.dat]`
+  tag — matching the reference. No more OxCode panel left stuck at the top. Toggle
+  off to restore the normal header. (ASCII fallback for limited terminals.)
 - **No more infinite "Thinking…" hangs.** The model request had no timeout, so a
   provider connection that stalled (open socket, no bytes, no `[DONE]`) left the
   agent stuck forever until Ctrl+C. Added an idle watchdog that aborts the stream

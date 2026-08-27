@@ -8,7 +8,7 @@ import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
 import { loadInputHistory, saveInputHistory } from './inputHistory.js';
-import { colors, symbols, brand, applyTheme, fsocietyBanner } from './theme.js';
+import { colors, symbols, brand, applyTheme } from './theme.js';
 import { resolveAttachments } from './attachments.js';
 import { Header } from './components/Header.js';
 import { HistoryView, type HistoryEntry } from './components/HistoryView.js';
@@ -32,7 +32,7 @@ interface PendingApproval {
   resolve: (r: ApprovalResponse) => void;
 }
 
-export function App({ runtime, startWithResumePicker }: { runtime: Runtime; startWithResumePicker: boolean }): React.JSX.Element {
+export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: Runtime; startWithResumePicker: boolean; clearScreen?: () => void }): React.JSX.Element {
   const { exit } = useApp();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [streaming, setStreaming] = useState('');
@@ -49,7 +49,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
   const [exitHint, setExitHint] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [thinking, setThinking] = useState(''); // live reasoning stream (dim)
-  const [, setMrRobot] = useState(false); // forces a repaint when the theme flips
+  const [mrRobot, setMrRobot] = useState(false); // fsociety theme active
 
   const idRef = useRef(0);
   const runStartRef = useRef(0);
@@ -175,11 +175,8 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
       setMrRobot: (on) => {
         applyTheme(on ? 'mrrobot' : 'ox');
         setMrRobot(on);
-        // Clear the scroll so the banner + repainted header stand alone
-        // (fixes the old "stuck under the normal panel" look).
-        setHistory([]);
-        if (on) pushEntry({ id: nextId(), kind: 'banner', lines: fsocietyBanner() });
-        else pushInfo('fsociety mode off — back to OxCode. Terminal restored.');
+        setHistory([]); // drop old scrollback; the header itself becomes the fsociety screen
+        clearScreen?.(); // wipe the terminal so the OxCode panel is gone, not just pushed up
       },
       loadSession: (s) => {
         runtime.replaceSession(s);
@@ -218,7 +215,7 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
         })();
       },
     }),
-    [exit, pushInfo, pushError, runtime],
+    [exit, pushInfo, pushError, runtime, clearScreen],
   );
 
   const resumeResolveRef = useRef<((id: string | null) => void) | null>(null);
@@ -345,17 +342,18 @@ export function App({ runtime, startWithResumePicker }: { runtime: Runtime; star
 
   return (
     <Box flexDirection="column">
-      <Static items={[{ id: 'header' }, ...history]}>
+      <Static items={[{ id: mrRobot ? 'header-mr' : 'header' }, ...history]}>
         {(item) =>
-          item.id === 'header' ? (
+          item.id.startsWith('header') ? (
             <Header
-              key="header"
+              key={item.id}
               cwd={displayPath(runtime.config.cwd, runtime.config.cwd)}
               model={model}
               provider={runtime.config.provider}
               fileCount={runtime.profile.fileCount}
               gitBranch={runtime.profile.gitBranch}
               dangerMode={runtime.config.permissionMode === 'dangerouslySkipPermissions'}
+              mrRobot={mrRobot}
             />
           ) : (
             <HistoryView key={item.id} entry={item as HistoryEntry} />
