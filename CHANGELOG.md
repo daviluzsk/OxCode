@@ -5,6 +5,13 @@ All notable changes to OxCode are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Changed
+- **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
+  (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`
+  stealth endpoint was retired by OpenRouter (it now 404s). Updated the default,
+  the `/model` presets, help text, header and docs. Override any time with
+  `--model` / `OX_MODEL` / `/model`.
+
 ### Added
 - **Kali box — the AI's own machine.** `kali_up` boots a disposable Kali Linux
   container (Docker) that mounts the workspace at `/work` and installs a core

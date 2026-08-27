@@ -70,9 +70,9 @@ export type CommandOutcome =
 
 /** Curated models offered by the interactive /model picker. */
 export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
-  { id: 'stealth/ox-alpha', note: 'Ox Alpha (default)' },
-  { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free tier' },
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', note: 'Nemotron 3 Ultra 550B — free (default)' },
   { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — free tier' },
+  { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free tier' },
   { id: 'openrouter/auto', note: 'OpenRouter auto-router' },
 ];
 

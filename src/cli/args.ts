@@ -162,7 +162,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return out;
 }
 
-export const HELP_TEXT = `OxCode — autonomous terminal coding agent powered by Ox Alpha
+export const HELP_TEXT = `OxCode — autonomous terminal coding agent powered by NVIDIA Nemotron 3 Ultra 550B
 
 Usage:
   ox [path]                     Start an interactive session (optionally in [path])
@@ -174,7 +174,7 @@ Options:
   -p, --print [prompt]          Headless mode. With no value, reads the prompt from stdin
   -c, --continue                Continue the most recent session in this directory
   -r, --resume                  Pick a previous session to resume
-  -m, --model <model>           Model to use (default: stealth/ox-alpha)
+  -m, --model <model>           Model to use (default: nvidia/nemotron-3-ultra-550b-a55b:free)
       --base-url <url>          OpenAI-compatible API base URL
       --permission-mode <mode>  default | askAll | acceptEdits | plan | dangerouslySkipPermissions
       --effort <level>          Reasoning effort: low | medium | high

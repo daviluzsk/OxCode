@@ -1,7 +1,7 @@
 {
   "name": "oxcode",
   "version": "0.2.0",
-  "description": "OxCode — an autonomous terminal coding agent powered by Ox Alpha",
+  "description": "OxCode — an autonomous terminal coding agent powered by NVIDIA Nemotron 3 Ultra 550B",
   "license": "MIT",
   "type": "module",
   "bin": {

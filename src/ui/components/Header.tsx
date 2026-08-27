@@ -43,7 +43,7 @@ export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode 
               </Text>
               <Text dimColor>{`  v${VERSION}`}</Text>
             </Text>
-            <Text dimColor>Ox Alpha coding agent — and offensive-security workbench</Text>
+            <Text dimColor>Nemotron-powered coding agent — and offensive-security workbench</Text>
             <Text>
               <Text dimColor>{symbols.arrow} </Text>
               <Text color={colors.toolName}>{model}</Text>
