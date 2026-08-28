@@ -126,7 +126,7 @@ export class Agent {
           provider.stream({
             model: config.model,
             messages: this.requestMessages(),
-            tools: registry.specs(),
+            tools: registry.specs({ includePentest: config.pentest }),
             signal: this.deps.signal,
             reasoningEffort: config.reasoningEffort,
           }),

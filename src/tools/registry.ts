@@ -32,11 +32,20 @@ export class ToolRegistry {
     return [...this.tools.values()];
   }
 
-  specs(): ToolSpec[] {
-    return this.all().map((t) => ({
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters,
-    }));
+  /**
+   * Tool specs advertised to the model. The offensive/pentest toolkit is a large
+   * set of schemas (~40 tools) — advertising it every turn inflates input tokens
+   * (and cost) on ordinary coding sessions. So it's only sent when pentest mode
+   * is ON. The tools stay registered either way (and refuse to run when off).
+   */
+  specs(opts: { includePentest?: boolean } = {}): ToolSpec[] {
+    const include = opts.includePentest ?? false;
+    return this.all()
+      .filter((t) => include || t.category !== 'pentest')
+      .map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      }));
   }
 }

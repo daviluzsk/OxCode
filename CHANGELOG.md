@@ -116,6 +116,11 @@ All notable changes to OxCode are documented here. Format loosely follows
   component and a generic `pickChoice` host method.
 
 ### Changed
+- **Much cheaper input tokens on normal sessions.** The ~49 offensive-security
+  tool schemas (pentest/offsec/OxProxy/Kali/runner) are no longer advertised to
+  the model unless pentest mode is ON — they were being re-sent on every request,
+  inflating input cost on ordinary coding work. The tools stay registered and are
+  offered again the moment you run `/pentest`.
 - **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
   (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`
   stealth endpoint was retired by OpenRouter (it now 404s). Updated the default,
