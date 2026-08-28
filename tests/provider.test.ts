@@ -149,6 +149,22 @@ describe('OpenRouterProvider (mocked fetch)', () => {
     await expect(collectStream(provider.stream({ model: 'deepseek-ai/x', messages: [], tools: [] }))).rejects.toThrow(/NVIDIA key/i);
   });
 
+  it('retries a mid-stream provider overload error and recovers', async () => {
+    let attempts = 0;
+    const errChunk = JSON.stringify({ error: { message: 'Service temporarily overloaded' } });
+    const provider = new OpenRouterProvider({
+      apiKey: 'sk-test',
+      baseUrl: 'https://example.test/v1',
+      fetchImpl: async () => {
+        attempts++;
+        return attempts === 1 ? sseResponse([errChunk]) : sseResponse([textChunk('ok'), doneChunk]);
+      },
+    });
+    const res = await collectStream(provider.stream({ model: 'm', messages: [], tools: [] }));
+    expect(attempts).toBe(2); // errored once (no content), retried, then succeeded
+    expect(res.text).toBe('ok');
+  }, 8000);
+
   it('does not retry auth failures and gives a useful error', async () => {
     let attempts = 0;
     const provider = new OpenRouterProvider({

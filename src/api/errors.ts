@@ -38,6 +38,9 @@ export class ApiError extends Error {
         return new ApiError('Conflict (409). Retrying may help.', 'server', status, true);
       case 429:
         return new ApiError('Rate limited (429).', 'rate-limit', status, true, retryAfterMs);
+      case 503:
+      case 529:
+        return new ApiError(`Service overloaded (${status}) — backing off.`, 'rate-limit', status, true, retryAfterMs);
       default:
         if (status >= 500) {
           return new ApiError(`Provider server error (${status}). ${snippet}`, 'server', status, true, retryAfterMs);

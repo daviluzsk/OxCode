@@ -131,6 +131,12 @@ All notable changes to OxCode are documented here. Format loosely follows
   authorization before acting.
 
 ### Fixed
+- **Mid-stream provider errors now retry.** Overload/rate-limit errors that
+  arrive inside a 200 stream (e.g. NVIDIA "Service temporarily overloaded") used to
+  bypass the retry logic and fail the turn instantly. They're now thrown into the
+  retry loop (when no content was sent yet), classified as rate-limit, and backed
+  off — HTTP 503/529 are treated the same. So an overloaded free tier recovers
+  instead of spamming red errors.
 - **Fewer rate-limit failures.** 429s now get their own, larger retry budget
   (up to 12 attempts) with a longer per-minute-aware backoff that honors
   `Retry-After` — so busy free tiers (NVIDIA NIM / Kimi, OpenRouter free) ride out

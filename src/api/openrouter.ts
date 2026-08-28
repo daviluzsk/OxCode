@@ -285,6 +285,14 @@ export class OpenRouterProvider implements ModelProvider {
         for (const event of parser.feed(chunk)) {
           if (event.data.trim() === '[DONE]') continue;
           for await (const ev of this.handleChunk(event.data, assembler, (r) => (finishReason = r))) {
+            // A provider error delivered mid-stream (e.g. NVIDIA "Service
+            // overloaded") arrives as an event, not an HTTP status. Throw it so
+            // the retry loop can back off — unless we've already sent content.
+            if (ev.type === 'error') {
+              if (!emittedAny) throw ev.error;
+              yield ev;
+              return;
+            }
             emittedAny = true;
             yield ev;
           }
@@ -293,6 +301,11 @@ export class OpenRouterProvider implements ModelProvider {
       for (const event of parser.flush()) {
         if (event.data.trim() === '[DONE]') continue;
         for await (const ev of this.handleChunk(event.data, assembler, (r) => (finishReason = r))) {
+          if (ev.type === 'error') {
+            if (!emittedAny) throw ev.error;
+            yield ev;
+            return;
+          }
           emittedAny = true;
           yield ev;
         }
@@ -344,7 +357,9 @@ export class OpenRouterProvider implements ModelProvider {
     };
 
     if (obj.error?.message) {
-      yield { type: 'error', error: new ApiError(`Provider error: ${obj.error.message}`, 'server', undefined, true) };
+      const msg = obj.error.message;
+      const overloaded = /overload|rate.?limit|too many|capacity|try again|busy|503|529/i.test(msg);
+      yield { type: 'error', error: new ApiError(`Provider error: ${msg}`, overloaded ? 'rate-limit' : 'server', undefined, true) };
       return;
     }
 
