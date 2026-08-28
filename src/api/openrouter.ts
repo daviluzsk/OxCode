@@ -206,6 +206,11 @@ export class OpenRouterProvider implements ModelProvider {
     if (request.maxTokens) body.max_tokens = request.maxTokens;
     if (request.temperature !== undefined) body.temperature = request.temperature;
     if (request.reasoningEffort) body.reasoning = { effort: request.reasoningEffort };
+    // On OpenRouter, prefer the fastest backend and allow fallbacks so a slow or
+    // rate-limited free provider doesn't stall the turn (OpenRouter-only field).
+    if (baseUrl.includes('openrouter.ai')) {
+      body.provider = { sort: 'throughput', allow_fallbacks: true };
+    }
 
     logger.log('api.request', { model: request.model, messages: request.messages.length });
 

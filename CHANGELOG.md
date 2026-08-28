@@ -116,6 +116,7 @@ All notable changes to OxCode are documented here. Format loosely follows
   component and a generic `pickChoice` host method.
 
 ### Changed
+- **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
 - **Much cheaper input tokens on normal sessions.** The ~49 offensive-security
   tool schemas (pentest/offsec/OxProxy/Kali/runner) are no longer advertised to
   the model unless pentest mode is ON — they were being re-sent on every request,
@@ -186,6 +187,7 @@ All notable changes to OxCode are documented here. Format loosely follows
 - `formatCount` / `formatDuration` UI helpers with unit tests.
 
 ### Changed
+- **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
 - `estimateMessagesTokens` is now exported from the agent loop and reused by the UI,
   so the context meter and the auto-compaction trigger share one estimate.
 
