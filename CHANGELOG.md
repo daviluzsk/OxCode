@@ -116,6 +116,8 @@ All notable changes to OxCode are documented here. Format loosely follows
   component and a generic `pickChoice` host method.
 
 ### Changed
+- **Recon runs in parallel now.** `dir_bruteforce` and `vhost_scan` fire requests through a concurrency pool (~40 in flight, tunable) instead of one-at-a-time — content/vhost discovery over big wordlists is dramatically faster. Bigger default caps too.
+- **Swarm/fsociety fan out by default.** The prompts now push the agent to split independent recon/testing into 3–5 parallel `task` subagents in one turn (so the swarm office actually fills up) and to prefer the already-parallel tools over hand-issuing requests serially.
 - **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
 - **Much cheaper input tokens on normal sessions.** The ~49 offensive-security
   tool schemas (pentest/offsec/OxProxy/Kali/runner) are no longer advertised to
@@ -187,6 +189,8 @@ All notable changes to OxCode are documented here. Format loosely follows
 - `formatCount` / `formatDuration` UI helpers with unit tests.
 
 ### Changed
+- **Recon runs in parallel now.** `dir_bruteforce` and `vhost_scan` fire requests through a concurrency pool (~40 in flight, tunable) instead of one-at-a-time — content/vhost discovery over big wordlists is dramatically faster. Bigger default caps too.
+- **Swarm/fsociety fan out by default.** The prompts now push the agent to split independent recon/testing into 3–5 parallel `task` subagents in one turn (so the swarm office actually fills up) and to prefer the already-parallel tools over hand-issuing requests serially.
 - **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
 - `estimateMessagesTokens` is now exported from the agent loop and reused by the UI,
   so the context meter and the auto-compaction trigger share one estimate.

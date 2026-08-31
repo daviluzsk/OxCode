@@ -26,6 +26,22 @@ function gate(config: ResolvedConfig): ToolResult | null {
 const MAX_OUTPUT = 20_000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Run fn over items with a fixed pool of concurrent workers (fast recon). */
+async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>, signal?: AbortSignal): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    for (;;) {
+      if (signal?.aborted) return;
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i]!, i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 const COMMON_PATHS = [
   'admin', 'administrator', 'login', 'wp-admin', 'wp-login.php', 'dashboard', 'api', 'api/v1', 'api/v2',
   'config', 'config.php', 'config.json', 'settings.py', '.env', '.env.local', '.git/HEAD', '.git/config',
@@ -91,7 +107,8 @@ export function createKaliTools(config: ResolvedConfig): ToolDefinition[] {
     url: z.string().min(1).describe('Base URL, e.g. https://target'),
     wordlistFile: z.string().optional().describe('Path list file (one per line). Defaults to a built-in common list.'),
     extensions: z.array(z.string()).max(10).optional().describe('Also try these extensions, e.g. ["php","bak","zip"].'),
-    maxRequests: z.number().int().positive().max(2000).optional().describe('Cap (default 300).'),
+    maxRequests: z.number().int().positive().max(5000).optional().describe('Cap (default 1000).'),
+    concurrency: z.number().int().positive().max(100).optional().describe('Parallel requests (default 40).'),
     delayMs: z.number().int().min(0).max(1000).optional(),
   });
   const dirBruteforce: ToolDefinition<z.infer<typeof dirSchema>> = {
@@ -108,12 +125,12 @@ export function createKaliTools(config: ResolvedConfig): ToolDefinition[] {
       const base = a.url.replace(/\/+$/, '');
       let words = loadList(ctx.cwd, undefined, a.wordlistFile, COMMON_PATHS);
       if (a.extensions?.length) words = words.flatMap((w) => [w, ...a.extensions!.map((e) => `${w}.${e.replace(/^\./, '')}`)]);
-      const cap = Math.min(words.length, a.maxRequests ?? 300);
-      const delay = a.delayMs ?? 30;
+      const cap = Math.min(words.length, a.maxRequests ?? 1000);
+      const conc = Math.min(a.concurrency ?? 40, 100);
+      const paths = words.slice(0, cap).map((w) => '/' + w.replace(/^\//, ''));
+      const t0 = Date.now();
       const hits: string[] = [];
-      for (let i = 0; i < cap; i++) {
-        if (ctx.signal?.aborted) break;
-        const path = '/' + words[i]!.replace(/^\//, '');
+      await mapPool(paths, conc, async (path) => {
         try {
           const r = await rawHttp('GET', base + path, { timeout: 8000 });
           if (r.status !== 404 && r.status !== 0) {
@@ -121,9 +138,9 @@ export function createKaliTools(config: ResolvedConfig): ToolDefinition[] {
             hits.push(`${String(r.status).padEnd(3)} ${String(r.body.length).padStart(7)}b  ${path}${flag}`);
           }
         } catch { /* skip */ }
-        if (delay) await sleep(delay);
-      }
-      return ok(`dir_bruteforce ${base} — ${cap} paths tried, ${hits.length} hits:\n\n${hits.join('\n') || '(nothing found)'}`.slice(0, MAX_OUTPUT), { kind: 'info', title: 'DirBrute' });
+      }, ctx.signal);
+      hits.sort();
+      return ok(`dir_bruteforce ${base} — ${paths.length} paths, ${conc}x parallel, ${((Date.now() - t0) / 1000).toFixed(1)}s, ${hits.length} hits:\n\n${hits.join('\n') || '(nothing found)'}`.slice(0, MAX_OUTPUT), { kind: 'info', title: 'DirBrute' });
     },
   };
 
@@ -149,16 +166,16 @@ export function createKaliTools(config: ResolvedConfig): ToolDefinition[] {
       if (a.baseDomain) cands = cands.map((c) => (c.includes('.') ? c : `${c}.${a.baseDomain}`));
       const baseline = await rawHttp('GET', a.url, { timeout: 8000 }).catch(() => null);
       const bl = baseline ? baseline.body.length : -1;
+      const list = cands.slice(0, 2000);
       const rows: string[] = [];
-      for (let i = 0; i < Math.min(cands.length, 300); i++) {
-        if (ctx.signal?.aborted) break;
+      await mapPool(list, 40, async (host) => {
         try {
-          const r = await rawHttp('GET', a.url, { headers: { Host: cands[i]! }, timeout: 8000 });
-          if (r.status !== 404 && Math.abs(r.body.length - bl) > 48) rows.push(`${String(r.status).padEnd(3)} ${String(r.body.length).padStart(7)}b  Host: ${cands[i]}`);
+          const r = await rawHttp('GET', a.url, { headers: { Host: host }, timeout: 8000 });
+          if (r.status !== 404 && Math.abs(r.body.length - bl) > 48) rows.push(`${String(r.status).padEnd(3)} ${String(r.body.length).padStart(7)}b  Host: ${host}`);
         } catch { /* skip */ }
-        await sleep(30);
-      }
-      return ok(`vhost_scan (baseline ${bl}b) — ${rows.length} interesting:\n\n${rows.join('\n') || '(none differed)'}`.slice(0, MAX_OUTPUT), { kind: 'info', title: 'VHost' });
+      }, ctx.signal);
+      rows.sort();
+      return ok(`vhost_scan (baseline ${bl}b, ${list.length} hosts, 40x parallel) — ${rows.length} interesting:\n\n${rows.join('\n') || '(none differed)'}`.slice(0, MAX_OUTPUT), { kind: 'info', title: 'VHost' });
     },
   };
 
