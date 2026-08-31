@@ -323,6 +323,7 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       const on = !config.mrRobot; // toggle fsociety elite mode
       config.pentest = on; // rides on pentest (tools + gating)
       config.mrRobot = on; // + elite offensive-reasoning playbook in the prompt
+      config.reasoningEffort = on ? 'high' : undefined; // think hard (reasoning models)
       host.setMrRobot(on);
       host.print(
         on
