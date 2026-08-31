@@ -43,7 +43,7 @@ export const colors = {
 /** Live brand + mascot — swapped by applyTheme(). */
 export const brand = {
   name: 'OxCode',
-  tagline: 'Nemotron-powered coding agent — and offensive-security workbench',
+  tagline: 'Open-source coding agent — and offensive-security workbench',
   mascot: OX_MASCOT,
   mascotMini: '(oo)',
 };
@@ -65,7 +65,7 @@ export function applyTheme(mode: ThemeMode): void {
     colors.toolName = 'cyan';
     colors.user = 'white';
     brand.name = 'OxCode';
-    brand.tagline = 'Nemotron-powered coding agent — and offensive-security workbench';
+    brand.tagline = 'Open-source coding agent — and offensive-security workbench';
     brand.mascot = OX_MASCOT;
     brand.mascotMini = '(oo)';
   }

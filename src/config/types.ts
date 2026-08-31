@@ -60,7 +60,7 @@ export interface ResolvedConfig {
   cwd: string;
 }
 
-export const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+export const DEFAULT_MODEL = 'minimax/minimax-m3:free';
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 export const DEFAULT_MAX_TURNS = 200;

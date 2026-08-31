@@ -13,7 +13,7 @@ describe('config precedence', () => {
   it('applies defaults when nothing is set', () => {
     dir = makeTempDir();
     const cfg = resolveConfig({ cwd: dir, env: {}, userSettingsFile: path.join(dir, 'nope.json') });
-    expect(cfg.model).toBe('nvidia/nemotron-3-ultra-550b-a55b:free');
+    expect(cfg.model).toBe('minimax/minimax-m3:free');
     expect(cfg.baseUrl).toBe('https://openrouter.ai/api/v1');
     expect(cfg.permissionMode).toBe('default');
     expect(cfg.maxTurns).toBe(200);

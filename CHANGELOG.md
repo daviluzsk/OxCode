@@ -122,7 +122,7 @@ All notable changes to OxCode are documented here. Format loosely follows
   the model unless pentest mode is ON — they were being re-sent on every request,
   inflating input cost on ordinary coding work. The tools stay registered and are
   offered again the moment you run `/pentest`.
-- **Default model is now NVIDIA Nemotron 3 Ultra 550B (free)**
+- **Default model is now MiniMax M3 (free)** (`minimax/minimax-m3:free`) — the fastest, most stable free tier in testing; Nemotron/GLM/DeepSeek/Kimi remain in the /model picker. (Previously Nemotron; before that the retired stealth/ox-alpha.)
   (`nvidia/nemotron-3-ultra-550b-a55b:free`) — the previous `stealth/ox-alpha`
   stealth endpoint was retired by OpenRouter (it now 404s). Updated the default,
   the `/model` presets, help text, header and docs. Override any time with

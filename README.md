@@ -4,17 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 
-OxCode is an autonomous terminal coding agent powered by **NVIDIA Nemotron 3 Ultra 550B** (`nvidia/nemotron-3-ultra-550b-a55b:free`), accessed through OpenRouter's OpenAI-compatible API. Open any repository, describe a task in natural language, and OxCode inspects the code, edits files, runs commands and tests, reads failures, fixes its own mistakes, and keeps going until the task is genuinely done — all inside your terminal.
+OxCode is an autonomous terminal coding agent powered by **MiniMax M3** (`minimax/minimax-m3:free`) by default — any OpenAI-compatible model works, accessed through OpenRouter's OpenAI-compatible API. Open any repository, describe a task in natural language, and OxCode inspects the code, edits files, runs commands and tests, reads failures, fixes its own mistakes, and keeps going until the task is genuinely done — all inside your terminal.
 
 ```text
 ╭────────────────────────────────────────────────────────────╮
 │ OxCode                                                     │
-│ Nemotron coding agent                                        │
+│ Open-source coding agent                                      │
 │                                                            │
 │ ~/projects/my-project                                      │
 ╰────────────────────────────────────────────────────────────╯
 
-  Nemotron 3 Ultra • nvidia/nemotron-3-ultra-550b-a55b:free
+  MiniMax M3 • minimax/minimax-m3:free
   247 files • git: main
 
 > fix the authentication bug and run the tests
@@ -213,7 +213,7 @@ Runs a separate, unsaved side conversation with read-only tools and a snapshot o
 /compact      Compact history into a state summary
 /context      Show context usage and loaded files
 /cost         Show token usage
-/model        Interactive model picker (presets: Nemotron 3 Ultra free, MiniMax M3 free, GLM 5.2 free…)
+/model        Interactive model picker (presets: MiniMax M3 free, GLM 5.2 free, DeepSeek V4, Nemotron……)
 /effort       Show or set reasoning effort (low|medium|high)
 /system       Custom instruction the agent always follows (/system <text>|off|--save <text>)
 /skills       List installed skills
@@ -397,7 +397,7 @@ Precedence: **CLI arguments → project config → user config → environment �
 
 ```json
 {
-  "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "model": "minimax/minimax-m3:free",
   "permissionMode": "default",
   "appendSystemPrompt": "Responda sempre em português.",
   "pentest": false,
@@ -416,7 +416,7 @@ Malformed configs are rejected with human-readable, per-field errors.
 | `OPENROUTER_API_KEY` | OpenRouter API key (or `OX_API_KEY`) |
 | `NVIDIA_API_KEY` | NVIDIA API key (`nvapi-…`) for NVIDIA-hosted models (or `OX_NVIDIA_API_KEY`) |
 | `OX_BASE_URL` | Override the OpenRouter base URL (default `https://openrouter.ai/api/v1`) |
-| `OX_MODEL` | Override model (default `nvidia/nemotron-3-ultra-550b-a55b:free`) |
+| `OX_MODEL` | Override model (default `minimax/minimax-m3:free`) |
 | `OX_EFFORT` | Reasoning effort: `low` / `medium` / `high` |
 | `OX_PROVIDER` | `openrouter` (default) or `mock` (offline scripted provider) |
 | `OX_DEBUG=1` | Redacted debug log at `~/.ox/debug.log` |
