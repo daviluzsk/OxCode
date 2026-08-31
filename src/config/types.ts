@@ -66,7 +66,7 @@ export const DEFAULT_MODEL = 'minimax/minimax-m3:free';
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 export const DEFAULT_MAX_TURNS = 200;
-export const DEFAULT_COMPACT_THRESHOLD = 120_000;
+export const DEFAULT_COMPACT_THRESHOLD = 60_000;
 
 export const defaultConfig: Omit<ResolvedConfig, 'cwd' | 'apiKey'> = {
   model: DEFAULT_MODEL,

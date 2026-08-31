@@ -116,6 +116,7 @@ All notable changes to OxCode are documented here. Format loosely follows
   component and a generic `pickChoice` host method.
 
 ### Changed
+- **Roughly half the input tokens.** The auto-compaction threshold dropped from 120k to 60k, so the running context is summarized sooner and each turn re-sends far less. Big cut to token usage on long sessions. Tune it with `compactThreshold` in settings; `/compact` and `/clear` help too.
 - **Recon runs in parallel now.** `dir_bruteforce` and `vhost_scan` fire requests through a concurrency pool (~40 in flight, tunable) instead of one-at-a-time — content/vhost discovery over big wordlists is dramatically faster. Bigger default caps too.
 - **Swarm/fsociety fan out by default.** The prompts now push the agent to split independent recon/testing into 3–5 parallel `task` subagents in one turn (so the swarm office actually fills up) and to prefer the already-parallel tools over hand-issuing requests serially.
 - **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
@@ -189,6 +190,7 @@ All notable changes to OxCode are documented here. Format loosely follows
 - `formatCount` / `formatDuration` UI helpers with unit tests.
 
 ### Changed
+- **Roughly half the input tokens.** The auto-compaction threshold dropped from 120k to 60k, so the running context is summarized sooner and each turn re-sends far less. Big cut to token usage on long sessions. Tune it with `compactThreshold` in settings; `/compact` and `/clear` help too.
 - **Recon runs in parallel now.** `dir_bruteforce` and `vhost_scan` fire requests through a concurrency pool (~40 in flight, tunable) instead of one-at-a-time — content/vhost discovery over big wordlists is dramatically faster. Bigger default caps too.
 - **Swarm/fsociety fan out by default.** The prompts now push the agent to split independent recon/testing into 3–5 parallel `task` subagents in one turn (so the swarm office actually fills up) and to prefer the already-parallel tools over hand-issuing requests serially.
 - **Route to the fastest OpenRouter provider.** Requests now ask OpenRouter to sort by throughput and allow fallbacks, so a slow or rate-limited free backend is skipped for a faster one instead of stalling the turn (NVIDIA requests are unaffected).
