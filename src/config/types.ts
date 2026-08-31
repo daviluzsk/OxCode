@@ -53,6 +53,8 @@ export interface ResolvedConfig {
   reasoningEffort: ReasoningEffort | undefined;
   appendSystemPrompt: string | undefined;
   pentest: boolean;
+  /** fsociety / Mr Robot elite offensive-reasoning mode (set at runtime by /mrrobot). */
+  mrRobot?: boolean;
   maxTurns: number;
   stream: boolean;
   compactThreshold: number;

@@ -13,7 +13,7 @@ All notable changes to OxCode are documented here. Format loosely follows
   `deepseek-ai/deepseek-v4-flash-0731`, `moonshotai/kimi-k3`. First time you pick
   one it prompts for the NVIDIA key (`nvapi-…`) and saves it to `~/.ox/settings.json`
   (or set `NVIDIA_API_KEY`). GLM 5.2 stays on OpenRouter.
-- **`/mrrobot` — fsociety mode.** One command flips on pentest mode *and* repaints
+- **`/mrrobot` — fsociety elite hacker mode.** Now more than a theme: it loads an elite autonomous offensive-reasoning playbook into the system prompt (on top of pentest mode + the full toolkit). The agent reconnaissance-first, maps the attack surface, predicts the most likely vulns for that specific target, tests them fast and in parallel (fanning out subagents), then hunts non-obvious business-logic flaws, chains, race conditions and impossible states — hypothesizing, testing and adapting on every signal (status/size/timing/headers). Plus the red UI. One command flips on pentest mode *and* repaints
   the UI into a red "Mr Robot" hacker theme: the brand becomes **Mr Robot**, the ox
   mascot becomes an fsociety mask, the accent turns red, and a banner drops in.
   Run it again to switch back to OxCode.

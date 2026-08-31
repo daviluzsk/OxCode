@@ -320,13 +320,14 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
     }
 
     case 'mrrobot': {
-      const on = !config.pentest; // fsociety mode rides on pentest mode
-      config.pentest = on;
+      const on = !config.mrRobot; // toggle fsociety elite mode
+      config.pentest = on; // rides on pentest (tools + gating)
+      config.mrRobot = on; // + elite offensive-reasoning playbook in the prompt
       host.setMrRobot(on);
       host.print(
         on
-          ? "Hello, friend. fsociety mode engaged — red team is live (pentest on).\n⚠ Only touch targets you're authorized to test."
-          : 'fsociety mode disengaged. Pentest off.',
+          ? "Hello, friend. fsociety mode engaged — elite offensive reasoning + full toolkit are live.\nGive me a target and I'll recon it, map the surface, predict the likely flaws, test them in parallel, then hunt the non-obvious ones.\n⚠ Only touch targets you're authorized to test."
+          : 'fsociety mode disengaged. Back to normal.',
       );
       return { kind: 'handled' };
     }
