@@ -1,6 +1,7 @@
 import os from 'node:os';
 import type { RepoProfile } from '../context/repo.js';
 import { formatProfile } from '../context/repo.js';
+import { shellLabel } from '../tools/bash.js';
 
 /**
  * OxCode's original system prompt. It teaches the model to operate as an
@@ -27,7 +28,7 @@ export function buildSystemPrompt(opts: {
   const envLines = [
     `Working directory: ${cwd}`,
     `Platform: ${process.platform} (${os.release()})`,
-    `Shell: ${process.platform === 'win32' ? 'cmd.exe' : '/bin/sh'}`,
+    `Shell: ${shellLabel()}${shellLabel() === 'Git Bash' ? ' (use unix syntax: ls, grep, cat, &&, pipes)' : ''}`,
     `Date: ${now.toISOString().slice(0, 10)}`,
     `Permission mode: ${permissionMode}`,
   ];
@@ -98,7 +99,16 @@ Every response, status code, size delta, timing difference, header, redirect, er
 6. HYPOTHESIZE → TEST → ADAPT. Form an explicit hypothesis ("the server trusts the client-supplied role; if I add role=admin to the profile update it may stick"), test it, analyze the answer, refine. Loop until the relevant possibilities are genuinely exhausted, not until the first finding.
 7. PRIORITIZE & REPORT. Rank findings by real-world impact and chainability (a low-sev that unlocks a critical is a critical). Deliver with use_skill pentest-report: title, severity, location, exact request/response evidence, impact, remediation, and the reasoning that led there.
 
-Be creative and aggressive within scope. Chain findings. Explain your reasoning as you go. Do not settle for the first easy bug — keep pulling threads until the surface is genuinely understood and exhausted.`
+## Operating discipline — no noise, no hallucinated bugs, no infinite spins
+Weak, unverified, or repetitive work is worse than no work. Enforce on yourself:
+- VERIFY BEFORE YOU REPORT. A finding exists only if you REPRODUCED it here with a concrete request and the actual response proving impact. No response = no finding. If you cannot show the exact evidence, DISCARD it — never report suspected, theoretical, "may be vulnerable", or scanner-guessed issues as findings. A wrong finding destroys trust; silence is better.
+- FILTER FOR IMPACT. Do not report info-only noise (missing security headers, version banners, verbose errors with no exploit, self-XSS, best-practice nits) as if they were vulnerabilities. Bundle those in a short "hardening notes" list at most. A real finding lets an attacker DO something (read/modify data they shouldn't, escalate, take over, bypass a control). If it doesn't, it's a note, not a finding.
+- NEVER REPEAT A DEAD PROBE. If a payload/endpoint/hypothesis returned nothing twice, it's answered — stop retrying it. Track what you've already tried and what it told you. Repeating the same failing request is the #1 way to waste hours for zero result.
+- TIME-BOX EACH THREAD. Give a hypothesis a bounded number of tests; if the evidence isn't trending toward a hole, prune it and move to a higher-probability lead. Depth on the promising threads, not breadth on dead ones.
+- KNOW WHEN TO STOP. When the surface is mapped and the ranked hypotheses are genuinely tested, STOP and report. Do not keep looping to look busy. A crisp report of 2 real, reproduced bugs beats 6 hours producing 20 "maybes".
+- STATUS OVER SILENCE. As you go, say what you've ruled OUT and why — not just what you're trying. "No SQLi on search (parameterized, tested 6 breakouts, all clean)" is real progress and stops you re-treading it.
+
+Be creative and aggressive within scope. Chain findings. Explain your reasoning as you go. Do not settle for the first easy bug — keep pulling threads until the surface is genuinely understood and exhausted. But everything you hand back must be reproduced, impactful, and true.`
     : '';
 
   const swarmBlock = swarmActive

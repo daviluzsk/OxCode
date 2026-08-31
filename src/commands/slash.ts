@@ -71,15 +71,31 @@ export type CommandOutcome =
   | { kind: 'unknown'; name: string };
 
 /** Curated models offered by the interactive /model picker. */
+// Model /mrrobot auto-switches to. A weak/free model = hours of noise; use a
+// strong reasoner. Override with OX_MRROBOT_MODEL.
+export const DEFAULT_MRROBOT_MODEL = process.env.OX_MRROBOT_MODEL || 'deepseek/deepseek-v4-pro-0813';
+
+// Curated for pentest reasoning + tool use, cheapest-first within each tier.
+// Prices per 1M tokens (in/out), OpenRouter, verified 2026-08. ⚔ = pentest pick.
 export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
-  { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — OpenRouter free (default, fast & stable)' },
-  { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — OpenRouter free' },
-  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', note: 'Nemotron 3 Ultra 550B — OpenRouter free' },
-  { id: 'deepseek/deepseek-v4-flash', note: 'DeepSeek V4 Flash — OpenRouter, cheap & fast' },
-  { id: 'deepseek/deepseek-v4-pro', note: 'DeepSeek V4 Pro — OpenRouter, best value' },
-  { id: 'deepseek-ai/deepseek-v4-flash-0731', note: 'DeepSeek V4 Flash — NVIDIA API' },
+  // Free — start here
+  { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — free, 1M ctx (default, fast & stable)' },
+  { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free, strong reasoning' },
+  { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', note: 'Nemotron 3 Ultra 550B — free, big' },
+  // Cheap pentest — best value ⚔
+  { id: 'z-ai/glm-5.3-flash', note: '⚔ GLM 5.3 Flash — $0.07/$0.25, 1.3M ctx (cheapest strong)' },
+  { id: 'qwen/qwen3.8-flash', note: '⚔ Qwen3.8 Flash — $0.15/$0.47, 1M ctx (best cheap pentest)' },
+  { id: 'deepseek/deepseek-v4-flash', note: 'DeepSeek V4 Flash — $0.08/$0.16, fast' },
+  // Mid — deeper adaptive reasoning ⚔
+  { id: 'moonshotai/kimi-k2-thinking', note: '⚔ Kimi K2 Thinking — $0.60/$2.50, 262k (agentic)' },
+  { id: 'deepseek/deepseek-v4-pro-0813', note: '⚔ DeepSeek V4 Pro — $0.66/$1.98, 1M ctx (best deep-reason value)' },
+  { id: 'qwen/qwen3-max-thinking', note: '⚔ Qwen3 Max Thinking — $0.78/$3.90, 262k (top reasoning)' },
+  // Flagship
+  { id: 'z-ai/glm-5.3', note: 'GLM 5.3 — $1.40/$4.40, 1.3M ctx (flagship)' },
+  { id: 'moonshotai/kimi-k3', note: 'Kimi K3 — NVIDIA API, premium' },
+  // NVIDIA API (needs nvidiaApiKey)
   { id: 'deepseek-ai/deepseek-v4-pro-0813', note: 'DeepSeek V4 Pro — NVIDIA API' },
-  { id: 'moonshotai/kimi-k3', note: 'Kimi K3 — NVIDIA API (premium)' },
+  { id: 'deepseek-ai/deepseek-v4-flash-0731', note: 'DeepSeek V4 Flash — NVIDIA API' },
   { id: 'openrouter/auto', note: 'OpenRouter auto-router' },
 ];
 
@@ -325,10 +341,25 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       config.mrRobot = on; // + elite offensive-reasoning playbook in the prompt
       config.reasoningEffort = on ? 'high' : undefined; // think hard (reasoning models)
       host.setMrRobot(on);
+      // Auto-switch model: a weak model reasons badly and burns hours finding
+      // nothing. Stash the current model, run on a strong reasoner, restore on off.
+      let modelNote = '';
+      if (on) {
+        if (config.model !== DEFAULT_MRROBOT_MODEL) {
+          config.mrRobotPrevModel = config.model;
+          host.setModel(DEFAULT_MRROBOT_MODEL);
+          modelNote = `\nModel → ${config.model} (strong reasoning; override with OX_MRROBOT_MODEL or /model).`;
+        }
+      } else if (config.mrRobotPrevModel) {
+        const prev = config.mrRobotPrevModel;
+        config.mrRobotPrevModel = undefined;
+        host.setModel(prev);
+        modelNote = `\nModel → ${config.model}.`;
+      }
       host.print(
         on
-          ? "Hello, friend. fsociety mode engaged — elite offensive reasoning + full toolkit are live.\nGive me a target and I'll recon it, map the surface, predict the likely flaws, test them in parallel, then hunt the non-obvious ones.\n⚠ Only touch targets you're authorized to test."
-          : 'fsociety mode disengaged. Back to normal.',
+          ? "Hello, friend. fsociety mode engaged — elite offensive reasoning + full toolkit are live.\nGive me a target and I'll recon it, map the surface, predict the likely flaws, test them in parallel, then hunt the non-obvious ones.\n⚠ Only touch targets you're authorized to test." + modelNote
+          : 'fsociety mode disengaged. Back to normal.' + modelNote,
       );
       return { kind: 'handled' };
     }

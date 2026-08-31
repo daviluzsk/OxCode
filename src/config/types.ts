@@ -55,6 +55,8 @@ export interface ResolvedConfig {
   pentest: boolean;
   /** fsociety / Mr Robot elite offensive-reasoning mode (set at runtime by /mrrobot). */
   mrRobot?: boolean;
+  /** Model to restore when /mrrobot turns off (it auto-switches to a strong reasoner while on). */
+  mrRobotPrevModel?: string;
   maxTurns: number;
   stream: boolean;
   compactThreshold: number;
