@@ -48,6 +48,28 @@ export const brand = {
   mascotMini: '(oo)',
 };
 
+/**
+ * Colored-block mascot for the normal header — a little pixel emblem of
+ * square panels, à la Claude Code. Each cell is a 2-wide block with its color.
+ */
+export const MASCOT_BLOCKS: Array<Array<{ block: string; color: string }>> = [
+  [
+    { block: '▐█▌', color: 'magenta' },
+    { block: '▐█▌', color: 'yellowBright' },
+    { block: '▐█▌', color: 'cyan' },
+  ],
+  [
+    { block: '▐█▌', color: 'cyanBright' },
+    { block: '▐█▌', color: 'redBright' },
+    { block: '▐█▌', color: 'greenBright' },
+  ],
+  [
+    { block: '▐█▌', color: 'green' },
+    { block: '▐█▌', color: 'blueBright' },
+    { block: '▐█▌', color: 'magentaBright' },
+  ],
+];
+
 export type ThemeMode = 'ox' | 'mrrobot';
 
 /** Repaint the UI for a theme. `mrrobot` = red fsociety hacker look. */

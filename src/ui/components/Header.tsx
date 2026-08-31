@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { colors, symbols, brand, mrrobotArt, GLITCH_ROWS } from '../theme.js';
+import { colors, symbols, brand, mrrobotArt, GLITCH_ROWS, MASCOT_BLOCKS } from '../theme.js';
 import { VERSION } from '../../version.js';
 
 export interface HeaderProps {
@@ -68,9 +68,13 @@ export function Header({ cwd, model, provider, fileCount, gitBranch, dangerMode,
         {/* mascot + title row */}
         <Box flexDirection="row">
           <Box flexDirection="column" marginRight={2}>
-            {brand.mascot.map((line, i) => (
-              <Text key={i} color={colors.accent} bold>
-                {line}
+            {MASCOT_BLOCKS.map((row, i) => (
+              <Text key={i}>
+                {row.map((cell, j) => (
+                  <Text key={j} color={cell.color}>
+                    {cell.block}
+                  </Text>
+                ))}
               </Text>
             ))}
           </Box>
