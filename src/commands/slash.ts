@@ -174,7 +174,7 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         [
           `Session token usage:`,
           `  Requests:      ${u.requests}`,
-          `  Input tokens:  ${u.inputTokens.toLocaleString()}`,
+          `  Input tokens:  ${u.inputTokens.toLocaleString()}${u.cachedTokens ? `  (${u.cachedTokens.toLocaleString()} cached — billed cheaper)` : ''}`,
           `  Output tokens: ${u.outputTokens.toLocaleString()}`,
           `  Cost: pricing for "${config.model}" is not configured — token counts only.`,
         ].join('\n'),

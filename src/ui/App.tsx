@@ -451,7 +451,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
           history={inputHistory}
           model={runtime.config.reasoningEffort ? `${model} (${runtime.config.reasoningEffort})` : model}
           mode={runtime.config.pentest ? `${runtime.permissions.getMode()}·pentest` : runtime.permissions.getMode()}
-          statusRight={`${runtime.session.data.usage.inputTokens.toLocaleString()} in / ${runtime.session.data.usage.outputTokens.toLocaleString()} out`}
+          statusRight={`${formatCount(runtime.session.data.usage.inputTokens)} in${runtime.session.data.usage.cachedTokens ? ` (${formatCount(runtime.session.data.usage.cachedTokens)} cached)` : ''} / ${formatCount(runtime.session.data.usage.outputTokens)} out`}
           contextPct={Math.min(100, Math.round((estimateMessagesTokens(runtime.session.messages) / runtime.config.compactThreshold) * 100))}
           completions={completions}
           placeholder={busy ? 'Working…  /btw <question> to chat · Ctrl+C to interrupt' : undefined}

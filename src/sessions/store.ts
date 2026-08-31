@@ -23,7 +23,7 @@ export interface SessionData {
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];
-  usage: { inputTokens: number; outputTokens: number; requests: number };
+  usage: { inputTokens: number; outputTokens: number; cachedTokens: number; requests: number };
   /** Compaction events, for transparency. */
   compactions: number;
 }
@@ -42,7 +42,7 @@ export class Session {
       createdAt: now,
       updatedAt: now,
       messages: [],
-      usage: { inputTokens: 0, outputTokens: 0, requests: 0 },
+      usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0, requests: 0 },
       compactions: 0,
     };
   }
@@ -60,6 +60,7 @@ export class Session {
   addUsage(u: UsageInfo): void {
     this.data.usage.inputTokens += u.inputTokens;
     this.data.usage.outputTokens += u.outputTokens;
+    this.data.usage.cachedTokens = (this.data.usage.cachedTokens ?? 0) + (u.cachedTokens ?? 0);
     this.data.usage.requests += 1;
   }
 
