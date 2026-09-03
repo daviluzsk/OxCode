@@ -129,13 +129,19 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   try {
-    // Session continuation
+    // Session continuation. Interactive mode continues the most recent session
+    // in this directory BY DEFAULT (the last one is always saved); --new forces
+    // a fresh session, --resume opens the picker (loaded inside runInteractive).
+    // Headless (-p) only continues when --continue is explicit.
     const sessionStore = new SessionStore();
     let session: import('../sessions/store.js').Session | undefined;
-    if (args.continueSession) {
+    const autoContinue = !headless && !args.newSession && !args.resume;
+    if (args.continueSession || autoContinue) {
       session = sessionStore.latest(cwd) ?? undefined;
       if (session && !headless) {
-        process.stderr.write(`Continuing session ${session.data.id} (${session.messages.length} messages).\n`);
+        process.stderr.write(
+          `Continuing last session (${session.messages.length} messages). Type /new for a fresh one.\n`,
+        );
       }
     }
 

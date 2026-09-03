@@ -13,6 +13,8 @@ export interface ParsedArgs {
   promptFromStdin: boolean;
   continueSession: boolean;
   resume: boolean;
+  /** Force a fresh session instead of auto-continuing the last one. */
+  newSession: boolean;
   model?: string;
   baseUrl?: string;
   permissionMode?: PermissionMode;
@@ -34,6 +36,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     promptFromStdin: false,
     continueSession: false,
     resume: false,
+    newSession: false,
     dangerouslySkipPermissions: false,
     pentest: false,
     swarm: false,
@@ -99,6 +102,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case '-r':
       case '--resume':
         out.resume = true;
+        break;
+      case '-n':
+      case '--new':
+        out.newSession = true;
         break;
       case '--model':
       case '-m':
@@ -172,8 +179,9 @@ Usage:
 
 Options:
   -p, --print [prompt]          Headless mode. With no value, reads the prompt from stdin
-  -c, --continue                Continue the most recent session in this directory
+  -c, --continue                Continue the most recent session in this directory (default)
   -r, --resume                  Pick a previous session to resume
+  -n, --new                     Start a fresh session (the last one stays saved)
   -m, --model <model>           Model to use (default: minimax/minimax-m3:free)
       --base-url <url>          OpenAI-compatible API base URL
       --permission-mode <mode>  default | askAll | acceptEdits | plan | dangerouslySkipPermissions

@@ -102,6 +102,7 @@ export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
 export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'help', description: 'Show available commands' },
   { name: 'clear', description: 'Start a fresh conversation (repository files are untouched)' },
+  { name: 'new', description: 'Save the current session and start a new one' },
   { name: 'compact', description: 'Compact conversation history into a state summary' },
   { name: 'context', description: 'Show approximate context usage' },
   { name: 'cost', description: 'Show token usage for this session' },
@@ -147,10 +148,16 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       host.requestExit();
       return { kind: 'handled' };
 
+    case 'new':
     case 'clear': {
+      // Persist the current session first so it stays resumable, then swap in
+      // a fresh one (a new id -> the old conversation is kept, not overwritten).
+      try {
+        if (deps.session().messages.length > 0) sessionStore.save(deps.session());
+      } catch { /* best effort */ }
       host.loadSession(new SessionClass(config.cwd, config.model));
       host.clear();
-      host.print('Started a fresh conversation.');
+      host.print('Started a new session. The previous one is saved — reopen it with /resume or `ox --continue`.');
       return { kind: 'handled' };
     }
 
