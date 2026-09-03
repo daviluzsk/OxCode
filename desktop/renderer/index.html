@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+<title>OxCode</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <!-- sidebar -->
+  <aside id="sidebar">
+    <div class="side-top">
+      <div class="brand">Ox<span>Code</span></div>
+      <button id="btn-new" title="New session">＋</button>
+    </div>
+    <button id="btn-folder" class="side-item folder">📁 <span id="cwd">open a project…</span></button>
+    <div class="side-label">Sessions</div>
+    <div id="session-list"></div>
+    <div class="side-footer">
+      <button id="btn-pentest" class="tag" title="Pentest tools">pentest</button>
+      <button id="btn-mrrobot" class="tag" title="fsociety mode">fsociety</button>
+    </div>
+  </aside>
+
+  <!-- main -->
+  <div id="main">
+    <header id="topbar">
+      <div id="title">OxCode</div>
+      <div class="spacer"></div>
+      <div id="stats"></div>
+    </header>
+
+    <div id="messages"></div>
+
+    <div id="composer-wrap">
+      <div id="composer">
+        <textarea id="input" rows="1" placeholder="Type / for commands, or ask OxCode anything…"></textarea>
+        <div class="composer-bar">
+          <button id="btn-perm" class="cbtn" title="Permission mode">⛨ <span id="perm-label">default</span></button>
+          <div class="spacer"></div>
+          <select id="model" class="cbtn" title="Model"></select>
+          <select id="effort" class="cbtn" title="Reasoning effort">
+            <option value="">effort: auto</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+          </select>
+          <button id="btn-stop" class="cbtn danger" disabled>■</button>
+          <button id="btn-send" class="cbtn send" title="Send (Enter)">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- approval modal -->
+<div id="approval" class="modal" hidden>
+  <div class="modal-card">
+    <h3 id="appr-title">Approve action?</h3>
+    <div id="appr-summary" class="mono"></div>
+    <div id="appr-reason"></div>
+    <div class="modal-actions">
+      <button id="appr-yes">Allow once</button>
+      <button id="appr-session">Allow for session</button>
+      <button id="appr-no" class="danger">Deny</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
