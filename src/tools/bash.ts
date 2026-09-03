@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { execa, execaSync, ExecaError } from 'execa';
 import { z } from 'zod';
 import { redactSecrets } from '../utils/redact.js';
@@ -13,21 +14,37 @@ interface Shell {
   file: string;
   buildArgs: (cmd: string) => string[];
   label: string;
+  /** Dirs to prepend to PATH so coreutils resolve (Git Bash without a login shell). */
+  pathDirs: string[];
 }
 let cachedShell: Shell | undefined;
+
+/** From a bash.exe path, the Git dirs that hold coreutils (ls/grep/cat…). */
+function gitBinDirs(bashExe: string): string[] {
+  const dir = path.dirname(bashExe); // ...\Git\bin  or  ...\Git\usr\bin
+  const root = /\\usr\\bin$/i.test(dir) ? path.dirname(path.dirname(dir)) : path.dirname(dir);
+  return [path.join(root, 'usr', 'bin'), path.join(root, 'bin')].filter((d) => {
+    try { return fs.existsSync(d); } catch { return false; }
+  });
+}
 
 /**
  * Pick the shell. On Windows, prefer Git Bash (so the model's unix-style
  * commands — ls, grep, cat, &&, pipes — actually work instead of failing on
  * cmd.exe); fall back to cmd.exe. Override with OX_SHELL. Detected once.
+ *
+ * We run bash with `-c` (NOT `-lc`): a login shell sources the user's
+ * profile, which on Windows is a common source of stray warnings/MOTD on
+ * stderr and intermittent hangs. Instead we inject Git's coreutils dirs into
+ * PATH ourselves so unix commands still resolve.
  */
 function resolveShell(): Shell {
   if (cachedShell) return cachedShell;
   if (process.platform !== 'win32') {
-    cachedShell = { file: '/bin/sh', buildArgs: (c) => ['-c', c], label: '/bin/sh' };
+    cachedShell = { file: '/bin/sh', buildArgs: (c) => ['-c', c], label: '/bin/sh', pathDirs: [] };
     return cachedShell;
   }
-  const bashArgs = (c: string) => ['-lc', c];
+  const bashArgs = (c: string) => ['-c', c];
   const candidates = [
     process.env.OX_SHELL,
     'C:\\Program Files\\Git\\bin\\bash.exe',
@@ -37,7 +54,8 @@ function resolveShell(): Shell {
   for (const c of candidates) {
     try {
       if (fs.existsSync(c)) {
-        cachedShell = { file: c, buildArgs: bashArgs, label: c.toLowerCase().endsWith('bash.exe') ? 'Git Bash' : c };
+        const isBash = c.toLowerCase().endsWith('bash.exe');
+        cachedShell = { file: c, buildArgs: bashArgs, label: isBash ? 'Git Bash' : c, pathDirs: isBash ? gitBinDirs(c) : [] };
         return cachedShell;
       }
     } catch { /* keep looking */ }
@@ -47,11 +65,11 @@ function resolveShell(): Shell {
     const r = execaSync('where', ['bash'], { reject: false });
     const p = (r.stdout ?? '').split(/\r?\n/).map((s) => s.trim()).find((s) => /bash\.exe$/i.test(s) && fs.existsSync(s));
     if (p) {
-      cachedShell = { file: p, buildArgs: bashArgs, label: 'Git Bash' };
+      cachedShell = { file: p, buildArgs: bashArgs, label: 'Git Bash', pathDirs: gitBinDirs(p) };
       return cachedShell;
     }
   } catch { /* no bash on PATH */ }
-  cachedShell = { file: 'cmd.exe', buildArgs: (c) => ['/d', '/s', '/c', c], label: 'cmd.exe' };
+  cachedShell = { file: 'cmd.exe', buildArgs: (c) => ['/d', '/s', '/c', c], label: 'cmd.exe', pathDirs: [] };
   return cachedShell;
 }
 
@@ -93,13 +111,20 @@ export const bashTool: ToolDefinition<Args> = {
     const timeout = args.timeout ?? DEFAULT_TIMEOUT_MS;
     const start = Date.now();
     const sh = resolveShell();
+    // Prepend Git's coreutils dirs so unix commands resolve under `bash -c`
+    // (no login shell to set PATH for us).
+    const pathKey = Object.keys(process.env).find((k) => k.toLowerCase() === 'path') ?? 'PATH';
+    const env: NodeJS.ProcessEnv = { ...process.env, NO_COLOR: '1', CI: process.env.CI ?? '' };
+    if (sh.pathDirs.length) {
+      env[pathKey] = [...sh.pathDirs, process.env[pathKey] ?? ''].filter(Boolean).join(path.delimiter);
+    }
     try {
       const result = await execa(sh.file, sh.buildArgs(args.command), {
         cwd: ctx.cwd,
         timeout,
         maxBuffer: 16 * 1024 * 1024,
         cancelSignal: ctx.signal,
-        env: { ...process.env, NO_COLOR: '1', CI: process.env.CI ?? '' },
+        env,
         stripFinalNewline: false,
       });
       const duration = Date.now() - start;
