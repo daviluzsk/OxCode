@@ -27,6 +27,12 @@ import { Markdown } from './markdown.js';
 
 const SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
+/** Keep only the last `n` lines — bounds the live streaming region's height. */
+function tailLines(text: string, n: number): string {
+  const lines = text.split('\n');
+  return lines.length > n ? lines.slice(-n).join('\n') : text;
+}
+
 interface PendingApproval {
   request: ApprovalRequest;
   resolve: (r: ApprovalResponse) => void;
@@ -56,6 +62,11 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
   const runStartRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
   const changedRef = useRef<{ files: Set<string>; added: number; removed: number }>({ files: new Set(), added: 0, removed: 0 });
+  // Streaming buffers: tokens land here (no re-render); a timer flushes them to
+  // state at a fixed rate so Ink repaints ~11fps instead of once per token
+  // (per-token repaints of a tall block make the terminal scroll and flicker).
+  const streamRef = useRef('');
+  const thinkRef = useRef('');
   /** Live UI state for the /btw side channel (avoids stale closures). */
   const btwStateRef = useRef({ todos, activeTools, busy });
   useEffect(() => {
@@ -74,12 +85,16 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
   // todo updates
   useEffect(() => runtime.todoStore.onChange(setTodos), [runtime]);
 
-  // spinner + elapsed-time ticker (shared 90ms interval)
+  // spinner + elapsed + streaming flush (one shared 90ms interval).
+  // Streaming tokens accumulate in refs; here we push them to state at a fixed
+  // rate, so the live region repaints ~11fps regardless of token speed.
   useEffect(() => {
     if (!busy) return;
     const t = setInterval(() => {
       setSpinnerFrame((f) => (f + 1) % SPINNER.length);
       setElapsed(Date.now() - runStartRef.current);
+      setStreaming((cur) => (cur === streamRef.current ? cur : streamRef.current));
+      setThinking((cur) => (cur === thinkRef.current ? cur : thinkRef.current));
     }, 90);
     return () => clearInterval(t);
   }, [busy]);
@@ -95,24 +110,26 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
   }, [runtime]);
 
   const flushStreaming = useCallback(() => {
-    setStreaming((current) => {
-      const text = current.trim();
-      if (text) {
-        setHistory((h) => [...h, { id: nextId(), kind: 'assistant', text }]);
-      }
-      return '';
-    });
+    const text = streamRef.current.trim();
+    streamRef.current = '';
+    setStreaming('');
+    if (text) {
+      setHistory((h) => [...h, { id: nextId(), kind: 'assistant', text }]);
+    }
   }, []);
 
   const makeHooks = useCallback((): AgentHooks => {
     return {
+      // Buffer into refs; the 90ms ticker flushes to state (see the effect above).
       onTextDelta: (text) => {
-        setThinking('');
-        setStreaming((s) => s + text);
+        thinkRef.current = '';
+        streamRef.current += text;
       },
-      onReasoning: (text) => setThinking((t) => (t + text).replace(/\s+/g, ' ').slice(-220)),
+      onReasoning: (text) => {
+        thinkRef.current = (thinkRef.current + text).replace(/\s+/g, ' ').slice(-220);
+      },
       onToolStart: (call, summary) => {
-        setThinking('');
+        thinkRef.current = '';
         flushStreaming();
         setActiveTools((tools) => [
           ...tools,
@@ -234,6 +251,8 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
       runStartRef.current = Date.now();
       setElapsed(0);
       setThinking('');
+      streamRef.current = '';
+      thinkRef.current = '';
       changedRef.current = { files: new Set(), added: 0, removed: 0 };
       const abort = new AbortController();
       runAbortRef.current = abort;
@@ -367,7 +386,10 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
 
       {streaming ? (
         <Box marginLeft={1} marginTop={1} flexDirection="column">
-          <Markdown text={streaming} />
+          {/* Live preview shows only the tail so the dynamic region never grows
+              taller than the screen (which makes Ink scroll-thrash). The full
+              reply is printed in <Static> history when the turn commits. */}
+          <Markdown text={tailLines(streaming, 16)} />
         </Box>
       ) : null}
 
