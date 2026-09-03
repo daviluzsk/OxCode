@@ -37,17 +37,12 @@
       <div id="composer">
         <textarea id="input" rows="1" placeholder="Type / for commands, or ask OxCode anything…"></textarea>
         <div class="composer-bar">
-          <button id="btn-perm" class="cbtn" title="Permission mode">⛨ <span id="perm-label">default</span></button>
+          <button id="btn-perm" class="cbtn" title="Permission mode">shield <span id="perm-label">default</span></button>
           <div class="spacer"></div>
-          <select id="model" class="cbtn" title="Model"></select>
-          <select id="effort" class="cbtn" title="Reasoning effort">
-            <option value="">effort: auto</option>
-            <option value="low">low</option>
-            <option value="medium">medium</option>
-            <option value="high">high</option>
-          </select>
-          <button id="btn-stop" class="cbtn danger" disabled>■</button>
-          <button id="btn-send" class="cbtn send" title="Send (Enter)">➤</button>
+          <button id="model-btn" class="cbtn drop" title="Model"><span id="model-label">model</span> <span class="caret">▾</span></button>
+          <button id="effort-btn" class="cbtn drop" title="Reasoning effort"><span id="effort-label">effort: auto</span> <span class="caret">▾</span></button>
+          <button id="btn-stop" class="cbtn danger" disabled title="Stop">stop</button>
+          <button id="btn-send" class="cbtn send" title="Send (Enter)">Send</button>
         </div>
       </div>
     </div>

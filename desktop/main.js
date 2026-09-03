@@ -22,9 +22,11 @@ async function core(rel) {
   return import(pathToFileURL(candidates[candidates.length - 1]).href);
 }
 
+const os = require('node:os');
 let win = null;
 let runtime = null;
-let currentCwd = process.cwd();
+// Default to the user's home, not the app folder, so the title isn't "desktop".
+let currentCwd = os.homedir();
 let running = false;
 let abortController = null;
 
@@ -88,9 +90,17 @@ function hooks() {
         content: String(result.content || '').slice(0, 4000),
       }),
     onCompact: (before, after) => send('agent:event', { type: 'compact', before, after }),
-    onError: (message) => send('agent:event', { type: 'error', message: String(message) }),
+    onError: (message) => { log('AGENT error:', String(message)); send('agent:event', { type: 'error', message: String(message) }); },
   };
 }
+
+const LOG_FILE = path.join(os.tmpdir(), 'oxcode-desktop.log');
+function log(...a) {
+  const line = `[${new Date().toISOString()}] ` + a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n';
+  try { fs.appendFileSync(LOG_FILE, line); } catch { /* ignore */ }
+}
+process.on('uncaughtException', (e) => log('MAIN uncaughtException:', e && e.stack || String(e)));
+process.on('unhandledRejection', (e) => log('MAIN unhandledRejection:', e && (e.stack || String(e))));
 
 function createWindow() {
   win = new BrowserWindow({
@@ -109,6 +119,11 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.webContents.on('console-message', (_e, level, message, line, src) => {
+    if (level >= 2) log('RENDERER console', `[${src}:${line}]`, message);
+  });
+  win.webContents.on('render-process-gone', (_e, details) => log('RENDERER gone:', JSON.stringify(details)));
+  win.webContents.on('unresponsive', () => log('RENDERER unresponsive'));
 }
 
 // ---------- IPC ----------
@@ -147,6 +162,7 @@ ipcMain.handle('chat:send', async (_e, text) => {
     send('agent:event', { type: 'run-done', status: result.status, finalText: result.finalText, error: result.errorText });
     return { ok: true, status: result.status };
   } catch (e) {
+    log('chat:send threw:', e && e.stack || String(e));
     send('agent:event', { type: 'error', message: String(e && e.message || e) });
     return { ok: false, error: String(e && e.message || e) };
   } finally {
@@ -198,7 +214,7 @@ ipcMain.handle('model:set', async (_e, model) => {
   return { ok: true, state: stateSnapshot() };
 });
 
-ipcMain.handle('mode:set', async (_e, { pentest, mrRobot }) => {
+ipcMain.handle('mode:set', async (_e, { pentest, mrRobot, effort }) => {
   if (!runtime) return { ok: false };
   if (typeof pentest === 'boolean') runtime.config.pentest = pentest;
   if (typeof mrRobot === 'boolean') {
@@ -206,6 +222,7 @@ ipcMain.handle('mode:set', async (_e, { pentest, mrRobot }) => {
     if (mrRobot) runtime.config.pentest = true;
     runtime.swarm.fsociety = mrRobot;
   }
+  if (effort !== undefined) runtime.config.reasoningEffort = effort || undefined;
   return { ok: true, state: stateSnapshot() };
 });
 

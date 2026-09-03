@@ -1,10 +1,43 @@
 'use strict';
+window.addEventListener('error', (e) => console.error('renderer error:', e.message, e.filename + ':' + e.lineno, e.error && e.error.stack));
+window.addEventListener('unhandledrejection', (e) => console.error('renderer rejection:', e.reason && (e.reason.stack || String(e.reason))));
 const $ = (id) => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
 
 const messages = $('messages');
 let curAssistant = null, curReasoning = null, curTurn = null, lastTool = null;
 let busy = false, activeSessionId = null;
+let MODELS = [], currentModel = '', currentEffort = '', currentMenu = null;
+
+function stripMark(s) { return (s || '').replace(/^\s*⚔\s*/, ''); }
+function isPentestNote(s) { return (s || '').includes('⚔'); }
+function shortName(id) {
+  const p = MODELS.find((m) => m.id === id);
+  const note = (p && p.note) || id;
+  return stripMark(note).split(' — ')[0].split(' - ')[0].trim() || id;
+}
+
+// ---- custom dark dropdown (native <select> looked out of place) ----
+function closeMenu() { if (currentMenu) { currentMenu.remove(); currentMenu = null; document.removeEventListener('mousedown', onOutside); } }
+function onOutside(e) { if (currentMenu && !currentMenu.contains(e.target)) closeMenu(); }
+function openMenu(btn, items, current, onPick) {
+  closeMenu();
+  const menu = el('div', 'menu');
+  for (const it of items) {
+    if (it.sep) { menu.appendChild(el('div', 'menu-sep')); continue; }
+    const row = el('div', 'menu-item' + (it.pentest ? ' pentest' : '') + (it.value === current ? ' sel' : ''));
+    row.appendChild(el('span', 'pick'));
+    row.appendChild(el('span', 'lbl', it.label));
+    row.onclick = () => { closeMenu(); onPick(it.value); };
+    menu.appendChild(row);
+  }
+  document.body.appendChild(menu);
+  const r = btn.getBoundingClientRect();
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+  menu.style.top = (r.top - menu.offsetHeight - 6) + 'px';
+  currentMenu = menu;
+  setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+}
 
 function newTurn() {
   curTurn = el('div', 'turn');
@@ -53,14 +86,29 @@ function addTool(name, summary) {
 function finishTool(row, isError, content) {
   if (!row) return;
   const mark = el('span', isError ? 'fail' : 'ok', isError ? '✗' : '✓');
-  row.replaceChild(mark, row._spin);
-  row._body.textContent = content || '(no output)';
+  if (row._spin && row._spin.parentNode === row) row.replaceChild(mark, row._spin);
+  else row.insertBefore(mark, row.firstChild);
+  row._spin = mark;
+  if (row._body) row._body.textContent = content || '(no output)';
 }
 
 function addHello() {
   const h = el('div', 'hello');
   h.appendChild(el('div', 'big', 'OxCode'));
   h.appendChild(el('div', null, 'Autonomous coding + offensive-security agent. Ask for a build, a fix, or a target to test.'));
+  const chips = el('div', 'chips');
+  const examples = [
+    'Explain this project',
+    'Find and fix a bug',
+    'Write tests for the core',
+    'Recon a target (pentest)',
+  ];
+  for (const ex of examples) {
+    const c = el('div', 'ex', ex);
+    c.onclick = () => { $('input').value = ex; $('input').focus(); };
+    chips.appendChild(c);
+  }
+  h.appendChild(chips);
   messages.appendChild(h);
 }
 function turnFoot() {
@@ -72,7 +120,8 @@ function turnFoot() {
 }
 
 // ---- agent stream ----
-window.ox.onEvent((ev) => {
+window.ox.onEvent((ev) => { try { handleEvent(ev); } catch (err) { console.error('onEvent failed for', ev && ev.type, err && err.stack); } });
+function handleEvent(ev) {
   switch (ev.type) {
     case 'run-start': busy = true; setBusy(true); break;
     case 'text': appendText(ev.text); break;
@@ -90,7 +139,7 @@ window.ox.onEvent((ev) => {
       break;
     case 'state': if (ev.state) renderState(ev.state); break;
   }
-});
+}
 
 // ---- approvals ----
 window.ox.onApproval((req) => {
@@ -132,8 +181,8 @@ function renderState(s) {
   $('btn-pentest').classList.toggle('on', s.pentest);
   $('btn-mrrobot').classList.toggle('on', s.mrRobot);
   document.body.classList.toggle('fsociety', s.mrRobot);
-  const sel = $('model');
-  if (sel.value !== s.model && [...sel.options].some((o) => o.value === s.model)) sel.value = s.model;
+  currentModel = s.model;
+  $('model-label').textContent = shortName(s.model);
   if (s.permissionMode) $('perm-label').textContent = s.permissionMode;
   activeSessionId = s.sessionId;
   $('stats').textContent = `${s.model} · ${s.messages} msgs · in ${fmt(s.usage.in)} (${fmt(s.usage.cached)} cached) / out ${fmt(s.usage.out)}`;
@@ -158,7 +207,20 @@ $('btn-mrrobot').onclick = async () => {
   const on = !$('btn-mrrobot').classList.contains('on');
   const r = await window.ox.setMode({ mrRobot: on }); if (r.ok) renderState(r.state);
 };
-$('model').onchange = async () => { const r = await window.ox.setModel($('model').value); if (r.ok) renderState(r.state); };
+$('model-btn').onclick = () => {
+  const items = MODELS.map((m) => ({ value: m.id, label: stripMark(m.note || m.id), pentest: isPentestNote(m.note) }));
+  openMenu($('model-btn'), items, currentModel, async (v) => { const r = await window.ox.setModel(v); if (r.ok) renderState(r.state); });
+};
+$('effort-btn').onclick = () => {
+  const items = [
+    { value: '', label: 'effort: auto' }, { value: 'low', label: 'low' },
+    { value: 'medium', label: 'medium' }, { value: 'high', label: 'high' },
+  ];
+  openMenu($('effort-btn'), items, currentEffort, async (v) => {
+    currentEffort = v; $('effort-label').textContent = v ? 'effort: ' + v : 'effort: auto';
+    await window.ox.setMode({ effort: v });
+  });
+};
 
 function resetChat() { messages.innerHTML = ''; curTurn = null; curAssistant = null; curReasoning = null; addHello(); }
 
@@ -193,8 +255,7 @@ function timeAgo(iso) {
 // ---- boot ----
 (async () => {
   const models = await window.ox.listModels();
-  const sel = $('model');
-  for (const m of (models.models || [])) { const o = el('option', null, m.note || m.id); o.value = m.id; sel.appendChild(o); }
+  MODELS = models.models || [];
   const init = await window.ox.init();
   resetChat();
   if (!init.ok) {
