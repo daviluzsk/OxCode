@@ -56,6 +56,19 @@ export const VIEWER_HTML = String.raw`<!doctype html>
   #customize .actions button { flex: 1; font: inherit; font-size: 11px; padding: 6px; border-radius: 6px; border: 1px solid #334; background: #1e2733; color: #e6edf3; cursor: pointer; }
   #empty { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; color: #64748b; font-size: 14px; text-align: center; pointer-events: none; }
   #empty .big { font-size: 20px; color: #94a3b8; }
+  /* fsociety / Mr Robot theme — blood-red hacker skin */
+  body.fsociety { background: #060404; }
+  body.fsociety .panel { background: rgba(20,4,4,.85); border-color: #601313; box-shadow: 0 0 18px rgba(220,38,38,.15) inset; }
+  body.fsociety #hud h1 { color: #f5f5f5; }
+  body.fsociety #hud h1 span { color: #dc2626; }
+  body.fsociety #hud .stat b { color: #ef4444; }
+  body.fsociety #board h2, body.fsociety #board .note .who { color: #dc2626; }
+  body.fsociety #board .note { background: rgba(220,38,38,.08); border-left-color: #dc2626; }
+  body.fsociety #log h2 { color: #ef4444; }
+  body.fsociety .bubble { background: #dc2626; color: #fff; }
+  body.fsociety .bubble::after { border-top-color: #dc2626; }
+  body.fsociety .tag { color: #fca5a5; }
+  body.fsociety #hud h1 span::after { content: ""; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -97,14 +110,40 @@ export const VIEWER_HTML = String.raw`<!doctype html>
 </div>
 <div id="empty"><div class="big">Waiting for the swarm&hellip;</div><div>Run a task with <code>/swarm</code> active &mdash; workers appear here.</div></div>
 
+<script>window.__OX_FSOCIETY__ = __OX_FSOCIETY_FLAG__;</script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const ROLE_SHIRT = {
+// fsociety / Mr Robot mode: flips the whole office to the red hacker theme
+// and renames the crew after the show. Injected by the swarm server.
+const FSOC = !!window.__OX_FSOCIETY__;
+
+let ROLE_SHIRT = {
   orchestrator: 0x2563eb, planner: 0xf59e0b, explorer: 0x7c3aed, coder: 0x16a34a,
   reviewer: 0xdb2777, tester: 0xca8a04, security: 0xdc2626, worker: 0x475569,
 };
+// fsociety crew: role -> codename (dupes get a numeric suffix).
+const FSOC_NAMES = {
+  orchestrator: 'Mr. Robot', planner: 'White Rose', explorer: 'Darlene',
+  coder: 'Mobley', reviewer: 'Trenton', tester: 'Romero', security: 'Elliot',
+  worker: 'fsociety',
+};
+const fsocCount = {};
+function fsocName(role){
+  const base = FSOC_NAMES[role] ?? FSOC_NAMES.worker;
+  const n = (fsocCount[role] = (fsocCount[role] ?? 0) + 1);
+  return n === 1 ? base : base + ' ' + n;
+}
+if (FSOC){
+  document.title = 'fsociety — Swarm';
+  ROLE_SHIRT = {
+    orchestrator: 0xdc2626, planner: 0x7f1d1d, explorer: 0xb91c1c, coder: 0x991b1b,
+    reviewer: 0xe11d48, tester: 0xa31515, security: 0xf87171, worker: 0x450a0a,
+  };
+}
+const LINK_COLOR = FSOC ? 0xdc2626 : 0x38bdf8;
+const LINK_DOT = FSOC ? 0xfca5a5 : 0x7dd3fc;
 const STATUS_COLORS = {
   spawning: 0x64748b, thinking: 0xfbbf24, working: 0x4ade80,
   blocked: 0xf87171, done: 0x64748b, error: 0xf87171,
@@ -114,9 +153,15 @@ const PANTS = [0x1f2937,0x334155,0x475569,0x3f3f46,0x5b4636,0x0f172a,0x64748b];
 const HAIR = [0x1c1917,0x3f2a14,0x6b4423,0xb45309,0x9ca3af,0xe5e7eb,0x111827,0x7c2d12];
 const SKIN = [0xffe0bd,0xf1c27d,0xe0ac69,0xc68642,0x8d5524,0x5c3a21];
 
+if (FSOC){
+  document.body.classList.add('fsociety');
+  const h1 = document.querySelector('#hud h1'); if (h1) h1.innerHTML = '<span>f</span>society';
+  const sub = document.querySelector('#hud .sub'); if (sub) sub.textContent = 'the crew · live';
+}
+
 const app = document.getElementById('app');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0e14);
+scene.background = new THREE.Color(FSOC ? 0x0a0304 : 0x0b0e14);
 
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 400);
 camera.position.set(26, 34, 40);
@@ -505,15 +550,16 @@ function toScreen(obj, y){ obj.getWorldPosition(projV); projV.y += (y||0); projV
 function makeAgent(ev){
   const isOrch = ev.role === 'orchestrator';
   const seat = isOrch ? ORCH_SEAT : (seats[nextSeat++ % seats.length]);
-  const outfit = loadOutfit(ev.label, ev.role);
+  const label = FSOC ? fsocName(ev.role) : ev.label;
+  const outfit = loadOutfit(label, ev.role);
   const root = buildWorker(outfit);
   root.position.set(seat.x, 0, seat.z); root.rotation.y = seat.rot;
   root.userData.agentId = ev.id;
   scene.add(root);
   if (!isOrch) chair(seat.x, seat.z + (seat.rot === 0 ? 0.15 : -0.15), seat.rot);
 
-  const tag = document.createElement('div'); tag.className='tag'; tag.textContent = ev.label; overlay.appendChild(tag);
-  const a = { id: ev.id, label: ev.label, role: ev.role, seat, root, outfit, status:'spawning',
+  const tag = document.createElement('div'); tag.className='tag'; tag.textContent = label; overlay.appendChild(tag);
+  const a = { id: ev.id, label, role: ev.role, seat, root, outfit, status:'spawning',
     tag, bubble:null, bubbleUntil:0, phase: Math.random()*6, intensity:0.5, done:false,
     state:'sit', queue:[], pauseUntil:0, walkPhase:0, blinkAt: performance.now()+rand(1500,5000), nextWander: performance.now()+rand(6000,14000),
     activity:[] };
@@ -552,10 +598,10 @@ function link(fromId, toId, text){
   const targets = toId==='all' ? [...agents.values()].filter(x=>x!==a) : [agents.get(toId)].filter(Boolean);
   const DUR = 1700;
   for (const b of targets){
-    const tubeMat = new THREE.MeshBasicMaterial({ color:0x38bdf8, transparent:true, opacity:0.9 });
+    const tubeMat = new THREE.MeshBasicMaterial({ color:LINK_COLOR, transparent:true, opacity:0.9 });
     const tube = new THREE.Mesh(new THREE.TubeGeometry(linkCurve(a,b), 44, 0.032, 8, false), tubeMat);
     scene.add(tube);
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,10), new THREE.MeshBasicMaterial({ color:0x7dd3fc }));
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.13,10,10), new THREE.MeshBasicMaterial({ color:LINK_DOT }));
     scene.add(dot);
     links.push({ a, b, tube, tubeMat, dot, born: performance.now(), dur: DUR, until: performance.now()+DUR });
   }

@@ -189,6 +189,7 @@ export async function main(argv: string[]): Promise<number> {
 
     if (args.swarm) {
       try {
+        runtime.swarm.fsociety = !!runtime.config.mrRobot;
         const url = await runtime.swarm.start();
         const { openInBrowser } = await import('../utils/openBrowser.js');
         openInBrowser(url);

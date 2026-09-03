@@ -341,6 +341,7 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       config.mrRobot = on; // + elite offensive-reasoning playbook in the prompt
       config.reasoningEffort = on ? 'high' : undefined; // think hard (reasoning models)
       host.setMrRobot(on);
+      deps.swarm.fsociety = on; // if the swarm office is open, it flips to the red fsociety theme on reload
       // Auto-switch model: a weak model reasons badly and burns hours finding
       // nothing. Stash the current model, run on a strong reasoner, restore on off.
       let modelNote = '';
@@ -397,6 +398,7 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
         }
         return { kind: 'handled' };
       }
+      swarm.fsociety = !!config.mrRobot; // red hacker theme + fsociety crew names
       const url = await swarm.start();
       const opened = arg === 'no-open' ? false : openInBrowser(url);
       host.print(

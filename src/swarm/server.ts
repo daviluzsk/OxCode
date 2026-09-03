@@ -18,7 +18,11 @@ export interface SwarmServer {
  *
  * SSE is used instead of WebSockets so there is no runtime dependency.
  */
-export async function startSwarmServer(bus: SwarmBus, preferredPort = 4517): Promise<SwarmServer> {
+export async function startSwarmServer(
+  bus: SwarmBus,
+  preferredPort = 4517,
+  fsociety?: () => boolean,
+): Promise<SwarmServer> {
   const clients = new Set<http.ServerResponse>();
 
   const unsubscribe = bus.subscribe((event) => {
@@ -36,7 +40,8 @@ export async function startSwarmServer(bus: SwarmBus, preferredPort = 4517): Pro
     const url = req.url ?? '/';
     if (url === '/' || url.startsWith('/?')) {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      res.end(VIEWER_HTML);
+      const html = VIEWER_HTML.replace('__OX_FSOCIETY_FLAG__', fsociety?.() ? 'true' : 'false');
+      res.end(html);
       return;
     }
     if (url === '/state') {
