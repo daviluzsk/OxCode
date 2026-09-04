@@ -97,6 +97,14 @@ function streamIdleMs(): number {
   return Number.isFinite(v) && v >= 200 ? v : 120_000;
 }
 
+/** Hard ceiling for a SINGLE request, regardless of activity. Some reasoning
+ * models dribble tokens forever (resetting the idle watchdog every token), so
+ * a run could "think" for 40+ minutes. This caps one attempt. OX_REQUEST_TIMEOUT_MS. */
+function requestHardMs(): number {
+  const v = Number(process.env.OX_REQUEST_TIMEOUT_MS);
+  return Number.isFinite(v) && v >= 5_000 ? v : 300_000; // 5 min default
+}
+
 function backoffMs(attempt: number, retryAfterMs?: number, kind?: string): number {
   if (retryAfterMs && retryAfterMs > 0) return Math.min(retryAfterMs, 60_000);
   // Rate limits (esp. NVIDIA NIM) reset per-minute — back off longer so we
@@ -225,7 +233,14 @@ export class OpenRouterProvider implements ModelProvider {
       else userSignal.addEventListener('abort', onUserAbort, { once: true });
     }
     let timedOut = false;
+    let hardTimedOut = false;
     let idle: ReturnType<typeof setTimeout> | undefined;
+    // Hard ceiling on the whole request — fires even while tokens keep coming,
+    // so a model that reasons forever can't hang the turn indefinitely.
+    const hard = setTimeout(() => {
+      hardTimedOut = true;
+      ac.abort();
+    }, requestHardMs());
     const bump = () => {
       if (idle) clearTimeout(idle);
       idle = setTimeout(() => {
@@ -236,12 +251,15 @@ export class OpenRouterProvider implements ModelProvider {
     const idleCleanup = () => {
       if (idle) clearTimeout(idle);
       idle = undefined;
+      clearTimeout(hard);
       if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
     };
     const wrapErr = (err: unknown): ApiError =>
-      timedOut
-        ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
-        : ApiError.network(err);
+      hardTimedOut
+        ? new ApiError(`Model ran past the ${Math.round(requestHardMs() / 1000)}s request limit — restarting the turn.`, 'timeout', undefined, true)
+        : timedOut
+          ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
+          : ApiError.network(err);
 
     const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
     let response: Response;

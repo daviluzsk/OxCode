@@ -61,6 +61,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
   const idRef = useRef(0);
   const runStartRef = useRef(0);
   const runAbortRef = useRef<AbortController | null>(null);
+  const forceStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const changedRef = useRef<{ files: Set<string>; added: number; removed: number }>({ files: new Set(), added: 0, removed: 0 });
   // Streaming buffers: tokens land here (no re-render); a timer flushes them to
   // state at a fixed rate so Ink repaints ~11fps instead of once per token
@@ -273,11 +274,14 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
         }
         if (result.status === 'max-turns') {
           pushInfo(`Stopped after reaching the turn limit (${runtime.config.maxTurns}). Use /compact or continue the request.`);
+        } else if (result.status === 'timeout') {
+          pushInfo('Stopped: the run hit the time limit (the model was taking too long). Try again, lower the reasoning effort, or set OX_RUN_TIMEOUT_MS.');
         } else if (result.status === 'error' && result.errorText) {
           pushError(result.errorText);
         }
         runtime.sessionStore.save(runtime.session);
       } finally {
+        if (forceStopRef.current) { clearTimeout(forceStopRef.current); forceStopRef.current = null; }
         setBusy(false);
         setThinking('');
         runAbortRef.current = null;
@@ -331,15 +335,41 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
     [busy, commandHost, makeHooks, pushEntry, pushError, pushInfo, runAgent, runtime],
   );
 
+  const forceResetUI = useCallback((note: string) => {
+    streamRef.current = '';
+    thinkRef.current = '';
+    setStreaming('');
+    setThinking('');
+    setActiveTools([]);
+    setBusy(false);
+    runAbortRef.current = null;
+    pushInfo(note);
+  }, [pushInfo]);
+
   const handleInterrupt = useCallback(() => {
     if (busy) {
+      // Second Ctrl+C while already interrupting → force-stop the UI now
+      // (the run may be stuck in a tool or a slow provider that won't unwind).
+      if (forceStopRef.current) {
+        clearTimeout(forceStopRef.current);
+        forceStopRef.current = null;
+        runAbortRef.current?.abort();
+        forceResetUI('Force-stopped.');
+        return;
+      }
       runAbortRef.current?.abort();
-      pushInfo('Interrupted. Cleaning up…');
+      pushInfo('Interrupting…  (Ctrl+C again to force-stop)');
+      // Safety net: if the run hasn't unwound in a few seconds, drop the UI out
+      // of the busy state so the terminal isn't stuck "thinking" forever.
+      forceStopRef.current = setTimeout(() => {
+        forceStopRef.current = null;
+        if (btwStateRef.current.busy) forceResetUI('Force-stopped (run did not unwind in time).');
+      }, 5000);
     } else {
       setExitHint(true);
       setTimeout(() => setExitHint(false), 1600);
     }
-  }, [busy, pushInfo]);
+  }, [busy, pushInfo, forceResetUI]);
 
   const handleExit = useCallback(() => {
     try {

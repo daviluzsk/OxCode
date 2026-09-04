@@ -7,7 +7,14 @@ import type { Session } from '../sessions/store.js';
 import { estimateTokens } from '../utils/truncate.js';
 import { logger } from '../utils/logger.js';
 
-export type RunStatus = 'completed' | 'cancelled' | 'error' | 'max-turns';
+export type RunStatus = 'completed' | 'cancelled' | 'error' | 'max-turns' | 'timeout';
+
+/** Whole-run wall-clock ceiling — a hard guarantee the agent stops even if a
+ * model or tool loop would otherwise spin for a very long time. OX_RUN_TIMEOUT_MS. */
+function runTimeoutMs(): number {
+  const v = Number(process.env.OX_RUN_TIMEOUT_MS);
+  return Number.isFinite(v) && v >= 30_000 ? v : 1_200_000; // 20 min default
+}
 
 export interface RunResult {
   status: RunStatus;
@@ -113,9 +120,12 @@ export class Agent {
     session.messages.push({ role: 'user', content: userContent });
     let turns = 0;
     let lastText = '';
+    const runStart = Date.now();
+    const runCap = runTimeoutMs();
 
     while (turns < config.maxTurns) {
       if (this.deps.signal?.aborted) return { status: 'cancelled', finalText: lastText };
+      if (Date.now() - runStart > runCap) return { status: 'timeout', finalText: lastText };
       turns++;
 
       await this.maybeCompact();
