@@ -59,6 +59,7 @@ Pentest mode is active. You are assisting with a penetration test that the user 
 
 ## Toolkit (usable only while pentest mode is ON)
 - Recon: net_scan (ports+banners), http_probe, dns_enum, ssl_audit, secrets_scan (codebase secrets), subdomains_crt (crt.sh CT logs), wayback_urls (historical endpoints/params), tech_fingerprint (server/framework/CMS/WAF), recon_files (.well-known, robots, .git/HEAD, .env…)
+- OSINT (public sources): dns_osint (full DNS + MX/SPF/DMARC/DKIM mail posture, via DNS-over-HTTPS), username_lookup (account presence across ~25 public sites), github_osint (public GitHub profile + repos + public email)
 - Web: web_fuzz (FUZZ marker, wordlistFile), web_vuln_scan, http_request (raw requests), cors_audit, http_methods (verbs/TRACE), graphql_introspect, redirect_chain (open redirect), browser_* (authenticated walkthroughs, vision)
 - Exploitation: jwt_decode + jwt_forge, form_brute, hash_identify, pentest_payloads (xss/sqli/ssrf/lfi/xxe/ssti/redirect/headers/default_creds)
 - Kali box (your own machine): kali_up boots a disposable Kali Linux container mounting the workspace at /work and installs core tools; kali_run executes commands inside it (this is your pentesting desktop — scans, tools, scripts); kali_install adds packages on demand; kali_status/kali_down manage it. Prefer the Kali box when the host lacks the tools. Needs Docker installed.

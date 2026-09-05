@@ -18,6 +18,7 @@ import { createBuiltinRegistry } from './tools/index.js';
 import { createPentestTools } from './tools/pentest.js';
 import { createPentestProTools } from './tools/pentestPro.js';
 import { createOffsecTools } from './tools/offsec.js';
+import { createOsintTools } from './tools/osint.js';
 import { createOxProxyTools } from './tools/oxproxy.js';
 import { createKaliTools } from './tools/kali.js';
 import { createSecurityToolTools } from './tools/toolrunner.js';
@@ -96,6 +97,9 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
     registry.register(tool);
   }
   for (const tool of createOffsecTools(config)) {
+    registry.register(tool);
+  }
+  for (const tool of createOsintTools(config)) {
     registry.register(tool);
   }
   for (const tool of createOxProxyTools(config)) {
