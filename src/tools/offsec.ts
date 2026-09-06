@@ -48,6 +48,22 @@ export interface RawResponse {
 }
 
 /**
+ * Default headers (e.g. an authenticated session: Authorization / Cookie) that
+ * every offensive HTTP request reuses, so the agent can test the AUTHENTICATED
+ * surface after the operator provides a token. Per-call headers still override.
+ */
+const SESSION_HEADERS: Record<string, string> = {};
+export function setSessionHeaders(h: Record<string, string>): void {
+  Object.assign(SESSION_HEADERS, h);
+}
+export function clearSessionHeaders(): void {
+  for (const k of Object.keys(SESSION_HEADERS)) delete SESSION_HEADERS[k];
+}
+export function getSessionHeaders(): Record<string, string> {
+  return { ...SESSION_HEADERS };
+}
+
+/**
  * Minimal HTTP/1.1 client over raw sockets. Forces `Connection: close` and
  * `Accept-Encoding: identity` so the whole response can be read to EOF without
  * chunked/gzip handling. Tunnels through an intercepting proxy via CONNECT when
@@ -80,6 +96,7 @@ export function rawHttp(
       Accept: '*/*',
       'Accept-Encoding': 'identity',
       Connection: 'close',
+      ...SESSION_HEADERS, // authenticated session set via auth_session (per-call headers still win)
       ...(opts.headers ?? {}),
     };
     if (body) headers['Content-Length'] = String(Buffer.byteLength(body));
