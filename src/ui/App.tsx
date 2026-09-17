@@ -259,27 +259,55 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
       runAbortRef.current = abort;
       const agent = runtime.makeAgent(makeHooks(), abort.signal);
       try {
-        const result = await agent.run(content);
-        flushStreaming();
-        const changed = changedRef.current;
-        if (changed.files.size > 0) {
-          pushEntry({
-            id: nextId(),
-            kind: 'summary',
-            files: changed.files.size,
-            added: changed.added,
-            removed: changed.removed,
-            durationMs: Date.now() - runStartRef.current,
-          });
+        // Goal loop: while a /goal is active, keep re-running the agent until it
+        // reports GOAL_ACHIEVED / GOAL_BLOCKED (or a cap / Ctrl+C). Without a
+        // goal this runs exactly once.
+        const GOAL_MAX = 25;
+        let runContent: string | ContentPart[] = content;
+        let iter = 0;
+        for (;;) {
+          const result = await agent.run(runContent);
+          flushStreaming();
+          const changed = changedRef.current;
+          if (changed.files.size > 0) {
+            pushEntry({
+              id: nextId(),
+              kind: 'summary',
+              files: changed.files.size,
+              added: changed.added,
+              removed: changed.removed,
+              durationMs: Date.now() - runStartRef.current,
+            });
+            changedRef.current = { files: new Set(), added: 0, removed: 0 };
+          }
+          if (result.status === 'max-turns') {
+            pushInfo(`Stopped after reaching the turn limit (${runtime.config.maxTurns}). Use /compact or continue the request.`);
+          } else if (result.status === 'timeout') {
+            pushInfo('Stopped: the run hit the time limit (the model was taking too long). Try again, lower the reasoning effort, or set OX_RUN_TIMEOUT_MS.');
+          } else if (result.status === 'error' && result.errorText) {
+            pushError(result.errorText);
+          }
+          runtime.sessionStore.save(runtime.session);
+
+          const goal = runtime.config.goal;
+          const finalText = result.finalText ?? '';
+          const achieved = /GOAL_ACHIEVED/.test(finalText);
+          const blocked = /GOAL_BLOCKED/i.test(finalText);
+          if (goal && achieved) { runtime.config.goal = undefined; pushInfo('🎯 Goal achieved.'); }
+          else if (goal && blocked) { pushInfo('🎯 Goal reported blocked — stopping (see the message above). Adjust and /goal again, or /goal off.'); }
+          const keepGoing =
+            !!goal && result.status === 'completed' && !achieved && !blocked && !abort.signal.aborted && iter < GOAL_MAX;
+          if (!keepGoing) {
+            if (goal && result.status === 'completed' && !achieved && !blocked && iter >= GOAL_MAX) {
+              pushInfo(`🎯 Paused after ${GOAL_MAX} passes without reaching the goal. Send a message to keep going, or /goal off.`);
+            }
+            break;
+          }
+          iter++;
+          pushInfo(`🎯 Goal not yet met — continuing (pass ${iter}).`);
+          runContent =
+            'Continue toward the active goal — it is NOT yet achieved. Keep using tools and iterating; do not repeat a failed approach. When it is fully achieved, end with GOAL_ACHIEVED on its own line. If you are truly blocked, end with GOAL_BLOCKED: <reason>.';
         }
-        if (result.status === 'max-turns') {
-          pushInfo(`Stopped after reaching the turn limit (${runtime.config.maxTurns}). Use /compact or continue the request.`);
-        } else if (result.status === 'timeout') {
-          pushInfo('Stopped: the run hit the time limit (the model was taking too long). Try again, lower the reasoning effort, or set OX_RUN_TIMEOUT_MS.');
-        } else if (result.status === 'error' && result.errorText) {
-          pushError(result.errorText);
-        }
-        runtime.sessionStore.save(runtime.session);
       } finally {
         if (forceStopRef.current) { clearTimeout(forceStopRef.current); forceStopRef.current = null; }
         setBusy(false);

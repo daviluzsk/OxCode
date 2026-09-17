@@ -136,6 +136,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
       mrRobot: config.mrRobot,
       swarmActive: swarm.running,
       skillsBlock: formatSkillsForPrompt(skills),
+      goal: config.goal,
     });
 
   let session = opts.session ?? new Session(config.cwd, config.model);

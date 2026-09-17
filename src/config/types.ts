@@ -57,6 +57,8 @@ export interface ResolvedConfig {
   mrRobot?: boolean;
   /** Model to restore when /mrrobot turns off (it auto-switches to a strong reasoner while on). */
   mrRobotPrevModel?: string;
+  /** Active goal (set by /goal). The agent keeps working across turns until it reports the goal met. */
+  goal?: string;
   maxTurns: number;
   stream: boolean;
   compactThreshold: number;

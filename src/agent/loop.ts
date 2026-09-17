@@ -278,10 +278,11 @@ export class Agent {
     }
   }
 
-  /** Compact history when it exceeds the configured token threshold. */
+  /** Auto-compact when context reaches ~80% of the threshold, so we compact
+   * proactively instead of waiting until we're right at the limit. */
   private async maybeCompact(): Promise<void> {
     const { config, session } = this.deps;
-    if (estimateMessagesTokens(session.messages) < config.compactThreshold) return;
+    if (estimateMessagesTokens(session.messages) < config.compactThreshold * 0.8) return;
     await this.compact();
   }
 

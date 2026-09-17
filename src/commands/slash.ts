@@ -110,6 +110,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'model', description: 'Show or change the model (/model <name>)' },
   { name: 'effort', description: 'Pick reasoning effort (/effort with no arg opens a menu)' },
   { name: 'system', description: 'Set a custom instruction the agent always follows (/system <text>|off|--save)' },
+  { name: 'goal', description: 'Set a goal the agent works toward until met (/goal <text> | /goal off)' },
   { name: 'skills', description: 'List installed skills (.ox/skills)' },
   { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
   { name: 'mrrobot', description: 'fsociety mode: pentest + red "Mr Robot" hacker theme' },
@@ -159,6 +160,22 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       host.loadSession(new SessionClass(config.cwd, config.model));
       host.clear();
       host.print('Started a new session. The previous one is saved — reopen it with /resume or `ox --continue`.');
+      return { kind: 'handled' };
+    }
+
+    case 'goal': {
+      const a = arg.trim();
+      if (!a) {
+        host.print(config.goal ? `Active goal:\n  ${config.goal}\n\nThe agent keeps working until it reports GOAL_ACHIEVED. Clear with /goal off.` : 'No goal set. Set one with /goal <text> — the agent will keep working across turns until it\'s met.');
+        return { kind: 'handled' };
+      }
+      if (/^(off|clear|stop|done|none)$/i.test(a)) {
+        config.goal = undefined;
+        host.print('Goal cleared. The agent stops after each request as usual.');
+        return { kind: 'handled' };
+      }
+      config.goal = a;
+      host.print(`🎯 Goal set:\n  ${a}\n\nThe agent will now keep working across turns until it's achieved (or reports a blocker). Send a message to start, or /goal off to cancel. Ctrl+C stops it anytime.`);
       return { kind: 'handled' };
     }
 

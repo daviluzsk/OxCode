@@ -22,8 +22,10 @@ export function buildSystemPrompt(opts: {
   swarmActive?: boolean;
   /** Pre-formatted skill listing block (from formatSkillsForPrompt). */
   skillsBlock?: string;
+  /** Active goal (set by /goal): keep working until it's met, then signal. */
+  goal?: string;
 }): string {
-  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, mrRobot, swarmActive, skillsBlock } = opts;
+  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, mrRobot, swarmActive, skillsBlock, goal } = opts;
   const now = new Date();
   const envLines = [
     `Working directory: ${cwd}`,
@@ -152,6 +154,16 @@ Each subagent you spawn can talk to the others with \`hive_message(to, message)\
     ? `\n\n# User Instructions\n\n${appendSystemPrompt.trim()}`
     : '';
 
+  const goalBlock = goal?.trim()
+    ? `\n\n# Active Goal (persistent)\n\nYou are working toward this goal until it is genuinely achieved:\n\n> ${goal.trim()}\n\n` +
+      'Rules:\n' +
+      '- Do NOT stop and hand back control while the goal is unmet — keep planning, using tools, testing, and iterating across as many turns as it takes.\n' +
+      '- Make real, verifiable progress each turn; do not repeat a failed approach — adapt.\n' +
+      '- ONLY when the goal is fully and verifiably achieved, end your final message with the exact token `GOAL_ACHIEVED` on its own line.\n' +
+      '- If you hit a genuine blocker you truly cannot pass (missing credentials, an impossible/contradictory requirement), end with `GOAL_BLOCKED: <one-line reason>` and stop.\n' +
+      '- Never emit GOAL_ACHIEVED prematurely — if unsure whether it is met, it is not; keep working.'
+    : '';
+
   return `You are OxCode, an autonomous software-engineering agent operating in a terminal. You have direct access to the user's repository through tools. You do not advise from a distance — you inspect, edit, run, test, and verify code yourself until the task is genuinely complete.
 
 # Environment
@@ -201,5 +213,5 @@ For any task with three or more meaningful steps, maintain the task list with to
 - Be concise. The user sees your streamed text between tool calls.
 - Briefly state what you found and what you are doing ("Found the bug in session expiry; patching now"), not lengthy speculation.
 - When finished, summarize: what changed, which files, and how it was verified (tests/build output). If anything remains unverified, say so explicitly.
-- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${mrRobotBlock}${swarmBlock}${userBlock}${skillsBlock ?? ''}`;
+- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${mrRobotBlock}${swarmBlock}${userBlock}${goalBlock}${skillsBlock ?? ''}`;
 }
