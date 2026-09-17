@@ -79,6 +79,7 @@ export const DEFAULT_MRROBOT_MODEL = process.env.OX_MRROBOT_MODEL || 'deepseek/d
 // Prices per 1M tokens (in/out), OpenRouter, verified 2026-08. ⚔ = pentest pick.
 export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
   // Free — start here
+  { id: 'stealth/union-alpha', note: 'Union Alpha — stealth/cloaked model, free while in preview' },
   { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — free, 1M ctx (default, fast & stable)' },
   { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free, strong reasoning' },
   { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', note: 'Nemotron 3 Ultra 550B — free, big' },
