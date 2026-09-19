@@ -12,7 +12,7 @@ import { detectRepoProfile, type RepoProfile } from './context/repo.js';
 import { McpManager } from './mcp/manager.js';
 import { PermissionManager, type Approver } from './permissions/manager.js';
 import { Session, SessionStore } from './sessions/store.js';
-import { createUseSkillTool, discoverSkills, formatSkillsForPrompt, type Skill } from './skills.js';
+import { createSkillTool, createUseSkillTool, discoverSkills, formatSkillsForPrompt, type Skill } from './skills.js';
 import { createBrowserTools } from './tools/browser.js';
 import { createBuiltinRegistry } from './tools/index.js';
 import { createPentestTools } from './tools/pentest.js';
@@ -82,9 +82,11 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
   const profile = await detectRepoProfile(config.cwd);
   const instructions = loadInstructions(config.cwd);
   const skills = discoverSkills(config.cwd);
-  if (skills.length > 0) {
-    registry.register(createUseSkillTool(skills));
-  }
+  // Always register both: use_skill re-discovers on each call (so a skill the
+  // agent just wrote is loadable immediately), and create_skill lets it author
+  // new skills for itself.
+  registry.register(createUseSkillTool(config.cwd, skills));
+  registry.register(createSkillTool(config.cwd));
 
   const browser = new BrowserManager();
   for (const tool of createBrowserTools(browser)) {

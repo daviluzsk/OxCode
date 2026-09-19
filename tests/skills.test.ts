@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createUseSkillTool, discoverSkills, formatSkillsForPrompt } from '../src/skills.js';
+import { createSkillTool, createUseSkillTool, discoverSkills, formatSkillsForPrompt } from '../src/skills.js';
 
 let tmp: string;
 let fakeHome: string;
@@ -84,13 +84,58 @@ describe('discoverSkills', () => {
 });
 
 describe('formatSkillsForPrompt', () => {
-  it('is empty for no skills and lists skills otherwise', () => {
-    expect(formatSkillsForPrompt([])).toBe('');
+  it('mentions authoring for no skills and lists skills otherwise', () => {
+    const empty = formatSkillsForPrompt([]);
+    expect(empty).toContain('create_skill');
+    expect(empty).not.toContain('Available Skills');
     const block = formatSkillsForPrompt([
       { name: 'a', description: 'A skill', body: '', file: '/f', scope: 'user' },
     ]);
     expect(block).toContain('Available Skills');
     expect(block).toContain('- a — A skill');
+  });
+});
+
+describe('create_skill tool', () => {
+  it('writes a skill the agent can then load with use_skill', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'oxskill-'));
+    try {
+      const create = createSkillTool(cwd);
+      // a name with a space is rejected (must be kebab-case)
+      const r = await create.execute(
+        { name: 'My Recon', description: 'How I recon a target', body: '# Recon\n\n1. fingerprint\n2. enumerate\n3. probe' } as never,
+        { cwd },
+      );
+      expect(r.isError).toBe(true);
+
+      const r2 = await create.execute(
+        { name: 'my-recon', description: 'How I recon a target', body: '# Recon\n\n1. fingerprint\n2. enumerate' } as never,
+        { cwd },
+      );
+      expect(r2.isError).toBeFalsy();
+      const file = path.join(cwd, '.ox', 'skills', 'my-recon', 'SKILL.md');
+      expect(fs.existsSync(file)).toBe(true);
+      expect(fs.readFileSync(file, 'utf8')).toContain('name: my-recon');
+
+      // discoverable + loadable live
+      const use = createUseSkillTool(cwd, []);
+      const loaded = await use.execute({ name: 'my-recon' }, { cwd });
+      expect(loaded.isError).toBeFalsy();
+      expect(loaded.content).toContain('# Skill: my-recon');
+      expect(loaded.content).toContain('fingerprint');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects invalid names', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'oxskill-'));
+    try {
+      const r = await createSkillTool(cwd).execute({ name: 'a', description: 'too short name', body: 'x'.repeat(30) } as never, { cwd });
+      expect(r.isError).toBe(true);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });
 
@@ -100,7 +145,7 @@ describe('use_skill tool', () => {
   ];
 
   it('returns the skill body by name', async () => {
-    const tool = createUseSkillTool(skills);
+    const tool = createUseSkillTool('/tmp', skills);
     const res = await tool.execute({ name: 'review' }, { cwd: '/tmp' });
     expect(res.isError).toBeFalsy();
     expect(res.content).toContain('# Skill: review');
@@ -108,7 +153,7 @@ describe('use_skill tool', () => {
   });
 
   it('errors with the available list for unknown skills', async () => {
-    const tool = createUseSkillTool(skills);
+    const tool = createUseSkillTool('/tmp', skills);
     const res = await tool.execute({ name: 'nope' }, { cwd: '/tmp' });
     expect(res.isError).toBe(true);
     expect(res.content).toContain('Unknown skill');

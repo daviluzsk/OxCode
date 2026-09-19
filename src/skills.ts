@@ -96,12 +96,20 @@ export function discoverSkills(cwd: string): Skill[] {
 
 /** One-line skill listing injected into the system prompt. */
 export function formatSkillsForPrompt(skills: Skill[]): string {
-  if (skills.length === 0) return '';
+  const authoring =
+    'You can also author your OWN skills with create_skill: when you work out a procedure worth reusing ' +
+    '(a recon/exploit workflow, a build or deploy recipe, a debugging routine), save it as a skill so you ' +
+    'can reload it with use_skill later instead of re-deriving it.';
+  if (skills.length === 0) {
+    return `\n\n# Skills\n\nNo skills are installed yet. ${authoring}`;
+  }
   const lines = skills.map((s) => `- ${s.name} — ${s.description}`);
   return (
     '\n\n# Available Skills\n\n' +
     'Reusable skill packs are installed on this machine. When a task matches a skill, ' +
-    'call the use_skill tool with its name to load the full instructions, then follow them.\n\n' +
+    'call the use_skill tool with its name to load the full instructions, then follow them. ' +
+    authoring +
+    '\n\n' +
     lines.join('\n')
   );
 }
@@ -115,8 +123,7 @@ type UseSkillArgs = z.infer<typeof useSkillSchema>;
  * The use_skill tool: returns the full body of a discovered skill so the
  * agent can follow it. Registered only when at least one skill exists.
  */
-export function createUseSkillTool(skills: Skill[]): ToolDefinition<UseSkillArgs> {
-  const byName = new Map(skills.map((s) => [s.name, s]));
+export function createUseSkillTool(cwd: string, skills: Skill[]): ToolDefinition<UseSkillArgs> {
   return {
     name: 'use_skill',
     description:
@@ -135,9 +142,14 @@ export function createUseSkillTool(skills: Skill[]): ToolDefinition<UseSkillArgs
     mutating: false,
     summarize: (a) => `skill: ${a.name}`,
     async execute(args): Promise<ToolResult> {
+      // Merge the skills known at startup with a live re-discovery, so a skill
+      // the agent just wrote with create_skill is usable in the same session.
+      const byName = new Map<string, Skill>();
+      for (const s of skills) byName.set(s.name, s);
+      for (const s of discoverSkills(cwd)) byName.set(s.name, s);
       const skill = byName.get(args.name);
       if (!skill) {
-        const available = skills.map((s) => `  - ${s.name} — ${s.description}`).join('\n') || '  (none)';
+        const available = [...byName.values()].map((s) => `  - ${s.name} — ${s.description}`).join('\n') || '  (none)';
         return err(`Unknown skill "${args.name}". Available skills:\n${available}`);
       }
       let body = skill.body;
@@ -149,6 +161,63 @@ export function createUseSkillTool(skills: Skill[]): ToolDefinition<UseSkillArgs
         title: 'Skill',
         detail: skill.name,
       });
+    },
+  };
+}
+
+const createSkillSchema = z.object({
+  name: z.string().min(2).max(48).describe('kebab-case skill name, e.g. "aws-recon" or "jwt-attacks".'),
+  description: z.string().min(4).max(200).describe('One line: what the skill is for and when to use it (used for discovery).'),
+  body: z.string().min(20).describe('The skill instructions in Markdown — the reusable playbook the agent will follow when it loads this skill.'),
+});
+type CreateSkillArgs = z.infer<typeof createSkillSchema>;
+
+/**
+ * Lets the agent author a reusable skill for itself. Writes
+ * <cwd>/.ox/skills/<name>/SKILL.md (project scope); it's immediately loadable
+ * with use_skill and appears in future sessions' Available Skills.
+ */
+export function createSkillTool(cwd: string): ToolDefinition<CreateSkillArgs> {
+  return {
+    name: 'create_skill',
+    description:
+      'Author a reusable skill for yourself — a named Markdown playbook saved to .ox/skills/<name>/SKILL.md. ' +
+      'Use it to capture a procedure you had to work out (a recon workflow, an exploit chain, a build/deploy ' +
+      'recipe) so you can reload it with use_skill next time instead of re-deriving it. Overwrites a project ' +
+      'skill of the same name.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'kebab-case skill name.' },
+        description: { type: 'string', description: 'One line: what it is and when to use it.' },
+        body: { type: 'string', description: 'The skill instructions in Markdown.' },
+      },
+      required: ['name', 'description', 'body'],
+    },
+    schema: createSkillSchema,
+    kind: 'write',
+    mutating: true,
+    summarize: (a) => `create skill: ${a.name}`,
+    async execute(args): Promise<ToolResult> {
+      const name = args.name.trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]{1,47}$/.test(name)) {
+        return err('Invalid skill name. Use lowercase letters, digits and hyphens (2–48 chars), e.g. "web-cache-poisoning".');
+      }
+      const dir = path.join(cwd, '.ox', 'skills', name);
+      const file = path.join(dir, 'SKILL.md');
+      const existed = fs.existsSync(file);
+      const desc = args.description.replace(/\r?\n/g, ' ').trim();
+      const content = `---\nname: ${name}\ndescription: ${desc}\n---\n\n${args.body.trim()}\n`;
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(file, content, 'utf8');
+      } catch (e) {
+        return err(`Could not write the skill: ${(e as Error).message}`);
+      }
+      return ok(
+        `${existed ? 'Updated' : 'Created'} skill "${name}" → ${file}\nLoad it any time with use_skill name="${name}".`,
+        { kind: 'info', title: 'create_skill', detail: name },
+      );
     },
   };
 }
