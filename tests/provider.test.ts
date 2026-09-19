@@ -37,6 +37,33 @@ describe('OpenRouterProvider (mocked fetch)', () => {
     expect(deltas).toEqual(['Hello', ' world']);
   });
 
+  it('aborts a hung read via the idle watchdog instead of hanging forever', async () => {
+    const prev = process.env.OX_STREAM_TIMEOUT_MS;
+    process.env.OX_STREAM_TIMEOUT_MS = '200';
+    try {
+      // A body that never emits and never closes → reader.read() would hang.
+      const hung = new Response(new ReadableStream<Uint8Array>({ start() { /* never */ } }), {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      });
+      const provider = new OpenRouterProvider({
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.test/v1',
+        maxRetries: 0,
+        fetchImpl: async () => hung,
+      });
+      const events: Array<{ type: string }> = [];
+      const start = Date.now();
+      for await (const ev of provider.stream({ model: 'm', messages: [], tools: [] })) events.push(ev);
+      const elapsed = Date.now() - start;
+      expect(events.some((e) => e.type === 'error')).toBe(true);
+      expect(elapsed).toBeLessThan(3000); // did NOT hang for hours
+    } finally {
+      if (prev === undefined) delete process.env.OX_STREAM_TIMEOUT_MS;
+      else process.env.OX_STREAM_TIMEOUT_MS = prev;
+    }
+  });
+
   it('assembles streamed tool calls', async () => {
     const chunks = [
       JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', function: { name: 'read_file', arguments: '' } }] } }] }),

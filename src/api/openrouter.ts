@@ -90,6 +90,25 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
+/**
+ * Reject a pending promise the moment `signal` aborts, EVEN IF the underlying
+ * operation ignores the signal. Node's fetch stream `reader.read()` can hang
+ * forever on a stalled connection despite an aborted controller — this is what
+ * caused a run to "think" for hours. Wrapping the read makes the idle/hard
+ * timeout (which aborts the controller) actually unblock it.
+ */
+function abortable<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new ApiError('Request aborted.', 'timeout', undefined, true));
+    if (signal.aborted) { onAbort(); return; }
+    signal.addEventListener('abort', onAbort, { once: true });
+    operation.then(
+      (v) => { signal.removeEventListener('abort', onAbort); resolve(v); },
+      (e: unknown) => { signal.removeEventListener('abort', onAbort); reject(e); },
+    );
+  });
+}
+
 /** Abort a stream that goes silent for too long (a hung provider connection).
  * Configurable via OX_STREAM_TIMEOUT_MS; read at call time so it stays testable. */
 function streamIdleMs(): number {
@@ -255,22 +274,26 @@ export class OpenRouterProvider implements ModelProvider {
       if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
     };
     const wrapErr = (err: unknown): ApiError =>
-      hardTimedOut
-        ? new ApiError(`Model ran past the ${Math.round(requestHardMs() / 1000)}s request limit — restarting the turn.`, 'timeout', undefined, true)
-        : timedOut
-          ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
-          : ApiError.network(err);
+      // User pressed Ctrl+C (controller aborted, but no timer fired) → stop, don't retry.
+      userSignal?.aborted && !timedOut && !hardTimedOut
+        ? new ApiError('Request cancelled.', 'cancelled')
+        // Our own hard/idle timeout fired → abort the stuck request and RETRY (keep going).
+        : hardTimedOut
+          ? new ApiError(`Model ran past the ${Math.round(requestHardMs() / 1000)}s request limit — restarting the turn.`, 'timeout', undefined, true)
+          : timedOut
+            ? new ApiError(`Model stream stalled — no data for ${Math.round(streamIdleMs() / 1000)}s. Retrying.`, 'timeout', undefined, true)
+            : ApiError.network(err);
 
     const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
     let response: Response;
     bump();
     try {
-      response = await fetchImpl(url, {
+      response = await abortable(fetchImpl(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
         signal: ac.signal,
-      });
+      }), ac.signal);
     } catch (err) {
       idleCleanup();
       throw wrapErr(err);
@@ -279,7 +302,7 @@ export class OpenRouterProvider implements ModelProvider {
     if (!response.ok) {
       idleCleanup();
       const retryAfter = response.headers.get('retry-after');
-      const text = await response.text().catch(() => '');
+      const text = await abortable(response.text(), ac.signal).catch(() => '');
       throw ApiError.fromStatus(
         response.status,
         text,
@@ -301,7 +324,9 @@ export class OpenRouterProvider implements ModelProvider {
     const reader = response.body.getReader();
     try {
       for (;;) {
-        const { done, value } = await reader.read();
+        // abortable(): if the idle/hard timer aborts `ac`, this rejects even when
+        // the underlying read would otherwise hang forever (the 7-hour freeze).
+        const { done, value } = await abortable(reader.read(), ac.signal);
         bump(); // got activity — reset the idle watchdog
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
@@ -344,7 +369,9 @@ export class OpenRouterProvider implements ModelProvider {
       throw wrapped;
     } finally {
       idleCleanup();
-      reader.releaseLock();
+      ac.abort(); // release the socket/timers; never wait for the remote to close
+      void reader.cancel().catch(() => {});
+      try { reader.releaseLock(); } catch { /* cancel() may have already released it */ }
     }
 
     for (const call of assembler.complete()) {
