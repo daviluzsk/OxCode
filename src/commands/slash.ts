@@ -86,12 +86,14 @@ export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
   // Cheap pentest — best value ⚔
   { id: 'z-ai/glm-5.3-flash', note: '⚔ GLM 5.3 Flash — $0.07/$0.25, 1.3M ctx (cheapest strong)' },
   { id: 'qwen/qwen3.8-flash', note: '⚔ Qwen3.8 Flash — $0.15/$0.47, 1M ctx (best cheap pentest)' },
+  { id: 'deepseek/deepseek-v4.1-flash', note: '⚔ DeepSeek V4.1 Flash — $0.15/$0.60, 1M ctx (newest)' },
   { id: 'deepseek/deepseek-v4-flash', note: 'DeepSeek V4 Flash — $0.08/$0.16, fast' },
   // Mid — deeper adaptive reasoning ⚔
   { id: 'moonshotai/kimi-k2-thinking', note: '⚔ Kimi K2 Thinking — $0.60/$2.50, 262k (agentic)' },
   { id: 'deepseek/deepseek-v4-pro-0813', note: '⚔ DeepSeek V4 Pro — $0.66/$1.98, 1M ctx (best deep-reason value)' },
   { id: 'qwen/qwen3-max-thinking', note: '⚔ Qwen3 Max Thinking — $0.78/$3.90, 262k (top reasoning)' },
   // Flagship
+  { id: 'qwen/qwen3.8-max-0902', note: 'Qwen3.8 Max — $2.00/$6.00, 1M ctx (top-tier)' },
   { id: 'z-ai/glm-5.3', note: 'GLM 5.3 — $1.40/$4.40, 1.3M ctx (flagship)' },
   { id: 'moonshotai/kimi-k3', note: 'Kimi K3 — NVIDIA API, premium' },
   // NVIDIA API (needs nvidiaApiKey)
