@@ -34,6 +34,7 @@ function makeDeps(host: Partial<CommandHost> & Pick<CommandHost, 'btw'>): { deps
     agent: () => {
       throw new Error('not needed');
     },
+    provider: { name: 'mock', stream: async function* () { /* noop */ } },
     config,
     permissions: new PermissionManager('default', async () => 'yes'),
     sessionStore: new SessionStore(),

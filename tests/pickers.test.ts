@@ -44,6 +44,7 @@ function makeDeps(pick: (spec: ChoiceSpec) => string | null): {
     agent: () => {
       throw new Error('not needed');
     },
+    provider: { name: 'mock', stream: async function* () { /* noop */ } },
     config,
     permissions,
     sessionStore: new SessionStore(),

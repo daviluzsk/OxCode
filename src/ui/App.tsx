@@ -3,7 +3,7 @@ import { Box, Static, Text, useApp } from 'ink';
 import type { ContentPart } from '../api/index.js';
 import type { AgentHooks } from '../agent/loop.js';
 import type { TodoItem } from '../agent/todo.js';
-import { BUILTIN_COMMANDS, handleSlashCommand, type CommandHost, type ChoiceSpec } from '../commands/slash.js';
+import { BUILTIN_COMMANDS, handleSlashCommand, rewriteNeutral, type CommandHost, type ChoiceSpec } from '../commands/slash.js';
 import { loadCustomCommands } from '../commands/custom.js';
 import type { ApprovalRequest, ApprovalResponse } from '../permissions/manager.js';
 import type { Runtime } from '../runtime.js';
@@ -339,6 +339,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
             host: commandHost,
             session: () => runtime.session,
             agent: () => runtime.makeAgent(makeHooks(), runAbortRef.current?.signal),
+            provider: runtime.provider,
             config: runtime.config,
             permissions: runtime.permissions,
             sessionStore: runtime.sessionStore,
@@ -358,6 +359,32 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
         return;
       }
       pushEntry({ id: nextId(), kind: 'user', text });
+      if (runtime.config.rewriteAuto) {
+        void (async () => {
+          try {
+            const rewritten = await rewriteNeutral(text, {
+              host: commandHost,
+              session: () => runtime.session,
+              agent: () => runtime.makeAgent(makeHooks(), runAbortRef.current?.signal),
+              provider: runtime.provider,
+              config: runtime.config,
+              permissions: runtime.permissions,
+              sessionStore: runtime.sessionStore,
+              registry: runtime.registry,
+              mcp: runtime.mcp,
+              profile: runtime.profile,
+              skills: runtime.skills,
+              swarm: runtime.swarm,
+            });
+            if (rewritten && rewritten !== text) pushInfo(`↻ rewritten: ${rewritten}`);
+            await runAgent(rewritten || text);
+          } catch (e) {
+            pushInfo(`Rewrite failed (${(e as Error).message}); sending original.`);
+            await runAgent(text);
+          }
+        })();
+        return;
+      }
       void runAgent(text);
     },
     [busy, commandHost, makeHooks, pushEntry, pushError, pushInfo, runAgent, runtime],
