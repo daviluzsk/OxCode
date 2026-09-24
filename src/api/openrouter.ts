@@ -193,7 +193,15 @@ export class OpenRouterProvider implements ModelProvider {
         await sleep(backoffMs(attempt++, apiErr.retryAfterMs, apiErr.kind), request.signal);
       }
     }
-    yield { type: 'error', error: lastError ?? new ApiError('Unknown provider failure.', 'unknown') };
+    // Retries exhausted — surface a friendly hint that this is likely the
+    // upstream provider or the picked model, not the user's setup.
+    const final = lastError ?? new ApiError('Unknown provider failure.', 'unknown');
+    const hint = final.kind === 'rate-limit'
+      ? ` (upstream is rate-limited or unhealthy after ${rateLimitAttempt} tries — try /model to switch, or wait a minute)`
+      : final.kind === 'server' || final.kind === 'timeout'
+        ? ` (giving up after ${attempt} tries — try /model to switch to another model)`
+        : '';
+    yield { type: 'error', error: new ApiError(final.message + hint, final.kind, final.status, false) };
   }
 
   private async *streamOnce(fetchImpl: typeof fetch, request: ModelRequest): AsyncGenerator<ModelEvent> {
@@ -408,7 +416,10 @@ export class OpenRouterProvider implements ModelProvider {
 
     if (obj.error?.message) {
       const msg = obj.error.message;
-      const overloaded = /overload|rate.?limit|too many|capacity|try again|busy|503|529/i.test(msg);
+      // Upstream infra hiccups (rate limits, overload, or the provider dropping
+      // a garbled SSE frame like "JSON error injected into SSE stream") — treat
+      // as retriable rate-limits so the bigger backoff budget kicks in.
+      const overloaded = /overload|rate.?limit|too many|capacity|try again|busy|503|529|sse stream|json error|injected|upstream|bad gateway|502|504|timeout|timed out/i.test(msg);
       yield { type: 'error', error: new ApiError(`Provider error: ${msg}`, overloaded ? 'rate-limit' : 'server', undefined, true) };
       return;
     }
