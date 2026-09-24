@@ -80,6 +80,7 @@ export const DEFAULT_MRROBOT_MODEL = process.env.OX_MRROBOT_MODEL || 'deepseek/d
 export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
   // Free — start here
   { id: 'stealth/union-alpha', note: 'Union Alpha — stealth/cloaked model, free while in preview' },
+  { id: 'stealth/space-bunny-alpha', note: 'Space Bunny Alpha — stealth/cloaked model, free while in preview' },
   { id: 'minimax/minimax-m3:free', note: 'MiniMax M3 — free, 1M ctx (default, fast & stable)' },
   { id: 'z-ai/glm-5.2:free', note: 'GLM 5.2 — free, strong reasoning' },
   { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', note: 'Nemotron 3 Ultra 550B — free, big' },
@@ -94,7 +95,9 @@ export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
   { id: 'qwen/qwen3-max-thinking', note: '⚔ Qwen3 Max Thinking — $0.78/$3.90, 262k (top reasoning)' },
   // Flagship
   { id: 'qwen/qwen3.8-max-0902', note: 'Qwen3.8 Max — $2.00/$6.00, 1M ctx (top-tier)' },
+  { id: 'qwen/qwen3.8-max-prime', note: 'Qwen3.8 Max Prime — top-tier' },
   { id: 'z-ai/glm-5.3', note: 'GLM 5.3 — $1.40/$4.40, 1.3M ctx (flagship)' },
+  { id: 'z-ai/glm-5.3-prime', note: 'GLM 5.3 Prime — flagship+' },
   { id: 'moonshotai/kimi-k3', note: 'Kimi K3 — NVIDIA API, premium' },
   // NVIDIA API (needs nvidiaApiKey)
   { id: 'deepseek-ai/deepseek-v4-pro-0813', note: 'DeepSeek V4 Pro — NVIDIA API' },
