@@ -139,6 +139,7 @@ export async function createRuntime(opts: RuntimeOptions): Promise<Runtime> {
       swarmActive: swarm.running,
       skillsBlock: formatSkillsForPrompt(skills),
       goal: config.goal,
+      hunt: config.hunt,
     });
 
   let session = opts.session ?? new Session(config.cwd, config.model);

@@ -262,7 +262,7 @@ export function App({ runtime, startWithResumePicker, clearScreen }: { runtime: 
         // Goal loop: while a /goal is active, keep re-running the agent until it
         // reports GOAL_ACHIEVED / GOAL_BLOCKED (or a cap / Ctrl+C). Without a
         // goal this runs exactly once.
-        const GOAL_MAX = 25;
+        const GOAL_MAX = runtime.config.hunt !== undefined ? 100 : 25;
         let runContent: string | ContentPart[] = content;
         let iter = 0;
         for (;;) {

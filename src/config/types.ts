@@ -59,6 +59,8 @@ export interface ResolvedConfig {
   mrRobotPrevModel?: string;
   /** Active goal (set by /goal). The agent keeps working across turns until it reports the goal met. */
   goal?: string;
+  /** Hunt mode (set by /hunt): relentless vuln hunting; value is the focus ('' = general, e.g. 'credits'). */
+  hunt?: string;
   maxTurns: number;
   stream: boolean;
   compactThreshold: number;

@@ -24,8 +24,10 @@ export function buildSystemPrompt(opts: {
   skillsBlock?: string;
   /** Active goal (set by /goal): keep working until it's met, then signal. */
   goal?: string;
+  /** Hunt mode (set by /hunt): relentless vuln hunting; value is the focus. */
+  hunt?: string;
 }): string {
-  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, mrRobot, swarmActive, skillsBlock, goal } = opts;
+  const { cwd, profile, instructionsBlock, permissionMode, appendSystemPrompt, pentest, mrRobot, swarmActive, skillsBlock, goal, hunt } = opts;
   const now = new Date();
   const envLines = [
     `Working directory: ${cwd}`,
@@ -154,6 +156,25 @@ Each subagent you spawn can talk to the others with \`hive_message(to, message)\
     ? `\n\n# User Instructions\n\n${appendSystemPrompt.trim()}`
     : '';
 
+  const huntFocusIsCredits = hunt !== undefined && /(credit|farm|money|econom|valor|saldo|coin|point|wallet|balance|cr[ée]dito)/i.test(hunt);
+  const huntBlock = hunt !== undefined
+    ? `\n\n# Hunt Mode (relentless, authorized assessment)\n\n` +
+      'Keep hunting until you CONFIRM at least one high-severity, reproducible finding — or you have genuinely exhausted the surface. This is an authorized engagement; the goal is to find and REPORT issues for remediation.\n' +
+      '- Never conclude "looks secure / nothing found" early. When one hypothesis dies, immediately pick the next-highest-probability lead and keep moving through EVERY technique class: access control / IDOR / cross-tenant isolation, injection, auth & token weaknesses, business-logic, concurrency (race), timing side-channels, weak/predictable randomness, admin/diagnostic operations, and sensitive-data exposure.\n' +
+      '- Cycle continuously: map surface → rank hypotheses by (probability × impact) → test the top ones → on failure, prune and re-rank → repeat. Reach the AUTHENTICATED surface first (register via tempmail, capture the session with auth_session) — most real bugs are behind login.\n' +
+      '- Report GOAL_ACHIEVED only once you have a CONFIRMED, evidence-backed high-severity finding (record it as you go). If you have exhaustively tested every class and truly found nothing high-severity, summarize what you ruled out and end with GOAL_BLOCKED: exhausted.' +
+      (huntFocusIsCredits
+        ? '\n\n## Focus: value / credit farming (business-logic economy)\n' +
+          'Prioritize the app ECONOMY — anywhere credits, balance, coins, points, quota or entitlements are granted, moved, or reversed. This is the most common and highest-value class here. For each such operation state the invariant that must hold (e.g. "net credited ≤ net actually paid/earned"), then hunt asymmetric transitions and repeatable net-positive loops:\n' +
+          '- a refund / cancel / downgrade that returns money but does NOT revoke the credit/entitlement it granted;\n' +
+          '- a plan or tier switch that grants credits on EACH switch regardless of payment difference;\n' +
+          '- negative or fractional amounts on top-up / cashout / transfer / bet (sign or range not validated);\n' +
+          '- concurrent (race) redemption of a one-time bonus / coupon / withdrawal → double credit (use race_test);\n' +
+          '- promo / coupon / referral reuse, self-referral, or multi-account signup bonuses (tempmail makes many accounts).\n' +
+          'For each candidate: state the invariant, drive a minimal PoC with test accounts, read the balance/entitlement after every step, and if you can repeat it net-positive at no cost, that is a high-severity finding — document it with exact evidence and the remediation.'
+        : '')
+    : '';
+
   const goalBlock = goal?.trim()
     ? `\n\n# Active Goal (persistent)\n\nYou are working toward this goal until it is genuinely achieved:\n\n> ${goal.trim()}\n\n` +
       'Rules:\n' +
@@ -213,5 +234,5 @@ For any task with three or more meaningful steps, maintain the task list with to
 - Be concise. The user sees your streamed text between tool calls.
 - Briefly state what you found and what you are doing ("Found the bug in session expiry; patching now"), not lengthy speculation.
 - When finished, summarize: what changed, which files, and how it was verified (tests/build output). If anything remains unverified, say so explicitly.
-- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${mrRobotBlock}${swarmBlock}${userBlock}${goalBlock}${skillsBlock ?? ''}`;
+- Do not expose internal reasoning traces; give conclusions and evidence.${instructionsBlock}${pentestBlock}${mrRobotBlock}${swarmBlock}${userBlock}${huntBlock}${goalBlock}${skillsBlock ?? ''}`;
 }

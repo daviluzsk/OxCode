@@ -113,6 +113,7 @@ export const BUILTIN_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'effort', description: 'Pick reasoning effort (/effort with no arg opens a menu)' },
   { name: 'system', description: 'Set a custom instruction the agent always follows (/system <text>|off|--save)' },
   { name: 'goal', description: 'Set a goal the agent works toward until met (/goal <text> | /goal off)' },
+  { name: 'hunt', description: 'Relentless vuln hunting until a high-sev finding (/hunt | /hunt credits | /hunt off)' },
   { name: 'skills', description: 'List installed skills (.ox/skills)' },
   { name: 'pentest', description: 'Pentest mode on/off (/pentest opens a menu)' },
   { name: 'mrrobot', description: 'fsociety mode: pentest + red "Mr Robot" hacker theme' },
@@ -178,6 +179,30 @@ export async function handleSlashCommand(input: string, deps: CommandDeps): Prom
       }
       config.goal = a;
       host.print(`🎯 Goal set:\n  ${a}\n\nThe agent will now keep working across turns until it's achieved (or reports a blocker). Send a message to start, or /goal off to cancel. Ctrl+C stops it anytime.`);
+      return { kind: 'handled' };
+    }
+
+    case 'hunt': {
+      const a = arg.trim();
+      if (/^(off|stop|clear|done)$/i.test(a)) {
+        config.hunt = undefined;
+        config.goal = undefined;
+        host.print('Hunt mode off.');
+        return { kind: 'handled' };
+      }
+      const focus = a; // '' = general, or e.g. "credits" / "farm"
+      config.pentest = true; // hunting needs the offensive toolkit
+      config.hunt = focus;
+      const credits = /(credit|farm|money|econ|valor|saldo|coin|point|wallet|balance|cr[ée]dito)/i.test(focus);
+      config.goal = credits
+        ? 'Find and prove at least one high-severity vulnerability, PRIORITIZING value/credit-farming (business-logic economy) bugs. Do not stop until one is confirmed with evidence.'
+        : 'Find and prove at least one high-severity, reproducible vulnerability. Do not stop until one is confirmed with evidence.';
+      host.print(
+        (credits
+          ? '🎯🔁 Hunt mode — value/credit-farming focus.\nThe agent will relentlessly map the app economy and hunt repeatable net-positive loops (refund-keeps-credit, plan-swap grants, negative amounts, double-spend races, promo/referral abuse) until it proves a high-severity bug.'
+          : `🎯🔁 Hunt mode${focus ? ` — focus: ${focus}` : ''}.\nThe agent will relentlessly cycle every technique class until it confirms a high-severity finding.`) +
+          '\n\nPentest mode is ON. Send a target/message to start. It keeps going across turns (Ctrl+C stops it, /hunt off cancels). ⚠ Only authorized targets.',
+      );
       return { kind: 'handled' };
     }
 
