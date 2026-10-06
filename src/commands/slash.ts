@@ -81,6 +81,10 @@ export const DEFAULT_MRROBOT_MODEL = process.env.OX_MRROBOT_MODEL || 'deepseek/d
 // Curated for pentest reasoning + tool use, cheapest-first within each tier.
 // Prices per 1M tokens (in/out), OpenRouter, verified 2026-08. ⚔ = pentest pick.
 export const MODEL_PRESETS: Array<{ id: string; note: string }> = [
+  // abliteration.ai — uncensored (needs abliterationApiKey) ⚔
+  { id: 'abliterated-model-large-v2', note: '⚔ Abliterated Large v2 — GLM-5.3 uncensored, 1M ctx (abliteration.ai)' },
+  { id: 'abliterated-model-large', note: '⚔ Abliterated Large — GLM-5.2 uncensored, 1M ctx (abliteration.ai)' },
+  { id: 'abliterated-model', note: '⚔ Abliterated — multimodal uncensored, 256K ctx (abliteration.ai)' },
   // Free — start here
   { id: 'stealth/union-alpha', note: 'Union Alpha — stealth/cloaked model, free while in preview' },
   { id: 'stealth/space-bunny-alpha', note: 'Space Bunny Alpha — stealth/cloaked model, free while in preview' },

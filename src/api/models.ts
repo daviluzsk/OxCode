@@ -1,4 +1,4 @@
-import { NVIDIA_BASE_URL } from '../config/types.js';
+import { NVIDIA_BASE_URL, ABLITERATION_BASE_URL } from '../config/types.js';
 import type { ResolvedConfig } from '../config/types.js';
 
 /**
@@ -23,17 +23,29 @@ export function isNvidiaModel(model: string): boolean {
   return NVIDIA_MODELS.has(model);
 }
 
+/**
+ * Uncensored models hosted by abliteration.ai (OpenAI-compatible). Routed to
+ * their endpoint with the abliteration key. Matched by the `abliterated-` prefix
+ * so new variants work without a code change.
+ */
+export function isAbliterationModel(model: string): boolean {
+  return /^abliterated-/.test(model);
+}
+
 export interface Endpoint {
   baseUrl: string;
   apiKey: string | undefined;
   /** Which key is required for this endpoint, for clearer error messages. */
-  keyName: 'OpenRouter' | 'NVIDIA';
+  keyName: 'OpenRouter' | 'NVIDIA' | 'Abliteration';
 }
 
 /** Resolve which endpoint + key a given model should use. */
 export function endpointFor(model: string, config: ResolvedConfig): Endpoint {
   if (isNvidiaModel(model)) {
     return { baseUrl: NVIDIA_BASE_URL, apiKey: config.nvidiaApiKey, keyName: 'NVIDIA' };
+  }
+  if (isAbliterationModel(model)) {
+    return { baseUrl: ABLITERATION_BASE_URL, apiKey: config.abliterationApiKey, keyName: 'Abliteration' };
   }
   return { baseUrl: config.baseUrl, apiKey: config.apiKey, keyName: 'OpenRouter' };
 }

@@ -24,6 +24,8 @@ export const SettingsFileSchema = z
     apiKey: z.string().optional(),
     /** NVIDIA NIM API key (nvapi-...) for NVIDIA-hosted models. */
     nvidiaApiKey: z.string().optional(),
+    /** abliteration.ai API key for the uncensored abliterated-* models. */
+    abliterationApiKey: z.string().optional(),
     permissionMode: PermissionModeSchema.optional(),
     reasoningEffort: ReasoningEffortSchema.optional(),
     /** Custom instructions appended to the system prompt. */
@@ -49,6 +51,8 @@ export interface ResolvedConfig {
   apiKey: string | undefined;
   /** NVIDIA NIM API key, used when the active model is NVIDIA-hosted. */
   nvidiaApiKey?: string | undefined;
+  /** abliteration.ai API key, used when the active model is an abliterated-* model. */
+  abliterationApiKey?: string | undefined;
   permissionMode: PermissionMode;
   reasoningEffort: ReasoningEffort | undefined;
   appendSystemPrompt: string | undefined;
@@ -73,6 +77,7 @@ export interface ResolvedConfig {
 export const DEFAULT_MODEL = 'minimax/minimax-m3:free';
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 export const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+export const ABLITERATION_BASE_URL = 'https://api.abliteration.ai/v1';
 export const DEFAULT_MAX_TURNS = 200;
 export const DEFAULT_COMPACT_THRESHOLD = 60_000;
 

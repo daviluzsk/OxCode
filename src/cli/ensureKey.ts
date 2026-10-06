@@ -71,6 +71,34 @@ export async function ensureNvidiaKeyInteractive(): Promise<string | null> {
   }
 }
 
+/**
+ * First-run abliteration.ai key setup — asked when the active model is an
+ * abliterated-* model and no abliteration key is configured. Saved to settings.
+ */
+export async function ensureAbliterationKeyInteractive(): Promise<string | null> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
+  process.stdout.write(
+    [
+      'This model runs on abliteration.ai (uncensored), but no abliteration key is set.',
+      'Get one at https://abliteration.ai — it will be saved to ~/.ox/settings.json.',
+      '',
+    ].join('\n'),
+  );
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question('abliteration.ai API key: ');
+    const key = answer.trim();
+    if (!key) return null;
+    saveSetting('abliterationApiKey', key);
+    process.stdout.write(`Saved ${maskKey(key)} to ${userSettingsPath()}\n\n`);
+    return key;
+  } catch {
+    return null;
+  } finally {
+    rl.close();
+  }
+}
+
 /** Merge the OpenRouter key into ~/.ox/settings.json without clobbering others. */
 export function saveApiKey(key: string): void {
   saveSetting('apiKey', key);

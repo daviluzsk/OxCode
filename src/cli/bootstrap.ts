@@ -8,8 +8,8 @@ import { headlessApprover } from '../permissions/manager.js';
 import { createRuntime } from '../runtime.js';
 import { SessionStore } from '../sessions/store.js';
 import { runHeadless } from '../headless.js';
-import { ensureApiKeyInteractive, ensureNvidiaKeyInteractive } from './ensureKey.js';
-import { isNvidiaModel } from '../api/models.js';
+import { ensureApiKeyInteractive, ensureNvidiaKeyInteractive, ensureAbliterationKeyInteractive } from './ensureKey.js';
+import { isNvidiaModel, isAbliterationModel } from '../api/models.js';
 import { logger } from '../utils/logger.js';
 import { redactSecrets } from '../utils/redact.js';
 
@@ -187,6 +187,13 @@ export async function main(argv: string[]): Promise<number> {
       const nv = await ensureNvidiaKeyInteractive();
       if (nv) runtime.config.nvidiaApiKey = nv;
       else process.stderr.write('No NVIDIA key — switch models with /model or set nvidiaApiKey later.\n');
+    }
+
+    // First-run abliteration.ai key prompt: active model is abliterated-* but no key set.
+    if (!headless && isAbliterationModel(runtime.config.model) && !runtime.config.abliterationApiKey) {
+      const ab = await ensureAbliterationKeyInteractive();
+      if (ab) runtime.config.abliterationApiKey = ab;
+      else process.stderr.write('No abliteration.ai key — switch models with /model or set abliterationApiKey later.\n');
     }
 
     if (args.dangerouslySkipPermissions) {
